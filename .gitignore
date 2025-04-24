@@ -178,3 +178,6 @@ cython_debug/
 
 # Generic log folder (e.g. for Tensorboard)
 logs
+
+# Cache folder
+cache/
