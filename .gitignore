@@ -181,3 +181,6 @@ logs
 
 # Cache folder
 cache/
+
+# Preprocessed sudoku puzzles
+sudoku_tfrecords/
