@@ -70,7 +70,7 @@ def prepare_dataset(batch_size: int, size_limit: int = None, use_disk_cache=Fals
         X_tensors, y_tensors = download_from_network()
 
         # TODO: remove
-        X_tensors, y_tensors = X_tensors[:20_000], y_tensors[:20_000]
+        X_tensors, y_tensors = X_tensors[:300_000], y_tensors[:300_000]
 
         print("Download complete. Starting preprocess...")
         (
@@ -123,7 +123,7 @@ def prepare_dataset(batch_size: int, size_limit: int = None, use_disk_cache=Fals
     # Limit training size for faster training
     if size_limit:
         n_train_ds = len(train_datasets)
-        for index in range():
+        for index in range(n_train_ds):
             train_datasets[index] = train_datasets[index].take(size_limit // n_train_ds)
 
     print_pipeline_performance(train_datasets[0])
