@@ -150,8 +150,6 @@ def preprocess_dataset(X_tensors, y_tensors):
         X_test_tensors,
         y_test_tensors,
     ) = split_based_on_difficulty(X_tensors, y_tensors, difficulties)
-    # TODO: verify that split is correct based on expected ratios
-    # TODO: verify that train is sorted correctly
 
     print(f"First few items of sorted train dataset:{X_train_tensors_sorted[:5]}")
     print(f"Last few items of sorted train dataset:{X_train_tensors_sorted[-5:]}")
@@ -162,11 +160,9 @@ def preprocess_dataset(X_tensors, y_tensors):
     for i in range(n_splits):
         start = (train_size // n_splits) * i
         end = (train_size // n_splits) * (i + 1)
-        print(start, end)
 
         X_slice = X_train_tensors_sorted[start:end]
         y_slice = y_train_tensors_sorted[start:end]
-        print(len(X_slice))
 
         train_preprocessed_dataset = tf.data.Dataset.from_tensor_slices(
             (X_slice, y_slice)

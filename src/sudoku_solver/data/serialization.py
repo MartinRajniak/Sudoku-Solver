@@ -81,8 +81,6 @@ def _load_from_disk(tf_record_dir):
             tf.TensorSpec(shape=(), dtype=tf.string),  # This is the serialized example
         ),
     ).map(parse_tf_example, num_parallel_calls=tf.data.AUTOTUNE)
-
-    print(tf_record_dir_path, len(list(parsed_dataset)))
     return parsed_dataset
 
 

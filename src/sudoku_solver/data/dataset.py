@@ -28,7 +28,7 @@ def configure_for_performance(ds, shuffle, batch_size, use_disk_cache=False, cac
         else:
             ds = ds.cache()
     if shuffle:
-        ds = ds.shuffle(buffer_size=100_000)
+        ds = ds.shuffle(buffer_size=1_000)
     ds = ds.batch(
         batch_size, drop_remainder=True  # drop_remainder=True = better for TPU/GPU
     )
@@ -68,9 +68,6 @@ def prepare_dataset(batch_size: int, size_limit: int = None, use_disk_cache=Fals
     if not train_loaded_datasets or not val_loaded_dataset or not test_loaded_dataset:
         print("Pre-processed sudoku data not found on disk. Downloading new version...")
         X_tensors, y_tensors = download_from_network()
-
-        # TODO: remove
-        X_tensors, y_tensors = X_tensors[:300_000], y_tensors[:300_000]
 
         print("Download complete. Starting preprocess...")
         (
@@ -124,7 +121,8 @@ def prepare_dataset(batch_size: int, size_limit: int = None, use_disk_cache=Fals
     if size_limit:
         n_train_ds = len(train_datasets)
         for index in range(n_train_ds):
-            train_datasets[index] = train_datasets[index].take(size_limit // n_train_ds)
+            n_batches = size_limit // n_train_ds
+            train_datasets[index] = train_datasets[index].take(n_batches)
 
     print_pipeline_performance(train_datasets[0])
 
