@@ -1,5 +1,5 @@
 from sudoku_solver.utils.dataset import print_pipeline_performance
-from sudoku_solver.data.preprocess import preprocess_dataset
+from sudoku_solver.data.preprocess import preprocess_dataset, limit_dataset
 from sudoku_solver.data.serialization import load_from_disk, save_to_disk
 
 import kagglehub
@@ -16,7 +16,9 @@ ROOT_CACHE_DIR = "cache"
 # Input pipeline
 
 
-def configure_for_performance(ds, shuffle, batch_size, use_disk_cache=False, cache_dir=None):
+def configure_for_performance(
+    ds, shuffle, batch_size, use_disk_cache=False, cache_dir=None
+):
     if cache_dir:
         # if memory is not an issue, do not specify disk folder so that everything is loaded to memory
         if use_disk_cache:
@@ -78,7 +80,11 @@ def prepare_dataset(batch_size: int, size_limit: int = None, use_disk_cache=Fals
         del X_tensors, y_tensors
 
         print("Preprocess complete. Starting to save data to disk...")
-        save_to_disk(train_preprocessed_datasets, val_preprocessed_dataset, test_preprocessed_dataset)
+        save_to_disk(
+            train_preprocessed_datasets,
+            val_preprocessed_dataset,
+            test_preprocessed_dataset,
+        )
         del train_preprocessed_datasets
         del val_preprocessed_dataset
         del test_preprocessed_dataset
@@ -111,7 +117,7 @@ def prepare_dataset(batch_size: int, size_limit: int = None, use_disk_cache=Fals
     )
 
     test_dataset = configure_for_performance(
-        test_loaded_dataset, 
+        test_loaded_dataset,
         shuffle=False,
         batch_size=batch_size,
     )
@@ -119,10 +125,12 @@ def prepare_dataset(batch_size: int, size_limit: int = None, use_disk_cache=Fals
 
     # Limit training size for faster training
     if size_limit:
-        n_train_ds = len(train_datasets)
-        for index in range(n_train_ds):
-            n_batches = size_limit // n_train_ds
-            train_datasets[index] = train_datasets[index].take(n_batches)
+        # At this point we have to account for batches
+        number_of_batches_limit = size_limit // batch_size
+
+        train_datasets, val_dataset, test_dataset = limit_dataset(
+            number_of_batches_limit, train_datasets, val_dataset, test_dataset
+        )
 
     print_pipeline_performance(train_datasets[0])
 
