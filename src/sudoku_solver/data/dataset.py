@@ -14,10 +14,18 @@ import shutil
 ROOT_CACHE_DIR = "cache"
 
 # Input pipeline
+@tf.function
+def add_fixed_number_flag(X, y):
+    is_empty_mask = X == -0.5 # -0.5 is preprocessed 0
 
+    modified_values = 10 + y # add 10 so we know that digit was empty in input
+
+    y = tf.where(is_empty_mask, modified_values, y)
+
+    return X, y
 
 def configure_for_performance(
-    ds, shuffle, batch_size, use_disk_cache=False, cache_dir=None
+    ds: tf.data.Dataset, shuffle, batch_size, use_disk_cache=False, cache_dir=None
 ):
     if cache_dir:
         # if memory is not an issue, do not specify disk folder so that everything is loaded to memory
@@ -99,6 +107,9 @@ def prepare_dataset(batch_size: int, size_limit: int = None, use_disk_cache=Fals
     # Configure input pipeline for performance
     train_datasets = []
     for index, train_loaded_dataset in enumerate(train_loaded_datasets):
+        # Temp - testing
+        train_loaded_dataset = train_loaded_dataset.map(add_fixed_number_flag, num_parallel_calls=tf.data.AUTOTUNE)
+
         train_dataset = configure_for_performance(
             train_loaded_dataset,
             shuffle=True,
