@@ -1,5 +1,30 @@
 from matplotlib import pyplot as plt
-import numpy as np
+
+
+def plot_histories(histories):
+    merged_histories = merge_histories(histories)
+
+    total_epochs = len(merged_histories["loss"])
+    epochs_in_run = total_epochs // len(histories)
+
+    n_columns = 4 if "sudoku_constraint" in merged_histories else 3
+    height = 6
+    width = 24 if n_columns == 4 else 18
+
+    plt.figure(figsize=(width, height))
+
+    plot_accuracy(merged_histories, n_columns)
+    plot_run_lines(total_epochs, epochs_in_run)
+
+    plot_loss(merged_histories, n_columns)
+    plot_run_lines(total_epochs, epochs_in_run)
+
+    plot_learning_rate(merged_histories, n_columns)
+    plot_run_lines(total_epochs, epochs_in_run)
+
+    if n_columns > 3:
+        plot_constraint_loss(merged_histories, n_columns)
+        plot_run_lines(total_epochs, epochs_in_run)
 
 
 def merge_histories(histories):
@@ -11,56 +36,57 @@ def merge_histories(histories):
     return merged_histories
 
 
-def plot_histories(histories):
-    merged_histories = merge_histories(histories)
+def plot_run_lines(total_epochs, epochs_in_run):
+    for epoch in range(total_epochs):
+        if (epoch + 1) % epochs_in_run == 0:
+            plt.vlines(x=epoch, ymin=0, ymax=100, color="r", linestyle="-", linewidth=1)
 
-    total_epochs = len(merged_histories["loss"])
-    epochs_in_run = total_epochs // len(histories)
-    x_ticks = np.arange(0, total_epochs, 1)
 
-    plt.figure(figsize=(20, 6))
+def plot_accuracy(histories, n_columns):
+    min_accuracy = min(min(histories["accuracy"]), min(histories["val_accuracy"]))
 
-    min_accuracy = min(
-        min(merged_histories["accuracy"]), min(merged_histories["val_accuracy"])
-    )
-
-    plt.subplot(1, 3, 1)
-    plt.plot(merged_histories["accuracy"], label="accuracy")
-    plt.plot(merged_histories["val_accuracy"], label="val_accuracy")
+    plt.subplot(1, n_columns, 1)
+    plt.plot(histories["accuracy"], label="accuracy")
+    plt.plot(histories["val_accuracy"], label="val_accuracy")
     plt.xlabel("Epoch")
     plt.ylabel("Accuracy")
     plt.ylim([min_accuracy, 1])
-    plt.xticks(x_ticks)
     plt.legend(loc="lower left")
-    for index, tick in enumerate(x_ticks):
-        if (index + 1) % epochs_in_run == 0:
-            plt.vlines(x=tick, ymin=0, ymax=10, color="r", linestyle="-", linewidth=1)
 
-    max_loss = max(max(merged_histories["loss"]), max(merged_histories["val_loss"]))
 
-    plt.subplot(1, 3, 2)
-    plt.plot(merged_histories["loss"], label="loss")
-    plt.plot(merged_histories["val_loss"], label="val_loss")
+def plot_loss(histories, n_columns):
+    max_loss = max(max(histories["loss"]), max(histories["val_loss"]))
+
+    plt.subplot(1, n_columns, 2)
+    plt.plot(histories["loss"], label="loss")
+    plt.plot(histories["val_loss"], label="val_loss")
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.ylim([0, max_loss + max_loss / 10])  # buffer so max value is visible
-    plt.xticks(x_ticks)
     plt.legend(loc="lower left")
-    for index, tick in enumerate(x_ticks):
-        if (index + 1) % epochs_in_run == 0:
-            plt.vlines(x=tick, ymin=0, ymax=10, color="r", linestyle="-", linewidth=1)
 
-    max_learning_rate = max(merged_histories["learning_rate"])
 
-    plt.subplot(1, 3, 3)
-    plt.plot(merged_histories["learning_rate"], label="learning_rate")
+def plot_learning_rate(histories, n_columns):
+    max_learning_rate = max(histories["learning_rate"])
+
+    plt.subplot(1, n_columns, 3)
+    plt.plot(histories["learning_rate"], label="learning_rate")
     plt.xlabel("Epoch")
     plt.ylabel("Learning Rate")
     plt.ylim(
         [0, max_learning_rate + max_learning_rate / 10]
     )  # buffer so max value is visible
-    plt.xticks(x_ticks)
     plt.legend(loc="lower left")
-    for index, tick in enumerate(x_ticks):
-        if (index + 1) % epochs_in_run == 0:
-            plt.vlines(x=tick, ymin=0, ymax=10, color="r", linestyle="-", linewidth=1)
+
+
+def plot_constraint_loss(histories, n_columns):
+    max_constraint_loss = max(histories["sudoku_constraint"])
+
+    plt.subplot(1, n_columns, 4)
+    plt.plot(histories["sudoku_constraint"], label="sudoku_constraint")
+    plt.xlabel("Epoch")
+    plt.ylabel("Sudoku constraint loss")
+    plt.ylim(
+        [0, max_constraint_loss + max_constraint_loss / 10]
+    )  # buffer so max value is visible
+    plt.legend(loc="lower left")

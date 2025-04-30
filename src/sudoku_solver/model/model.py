@@ -82,11 +82,17 @@ class SudokuConstraintLayer(layers.Layer):
     def __init__(self, constraint_weight=0.1, **kwargs):
         super(SudokuConstraintLayer, self).__init__(**kwargs)
         self.constraint_weight = constraint_weight
+
+        # Create metrics to track individual constraint components and total
+        self.total_penalty_metric = keras.metrics.Mean(name="sudoku_constraint")
+        self.row_penalty_metric = keras.metrics.Mean(name="row_constraint")
+        self.col_penalty_metric = keras.metrics.Mean(name="col_constraint")  
+        self.box_penalty_metric = keras.metrics.Mean(name="box_constraint")
         
     def build(self, input_shape):
         super(SudokuConstraintLayer, self).build(input_shape)
     
-    def call(self, inputs):
+    def call(self, inputs, training=None):
         # We'll compute all constraints in float32 to avoid precision issues
         # then cast back to the input's dtype at the end
         inputs_f32 = tf.cast(inputs, tf.float32)
@@ -109,17 +115,20 @@ class SudokuConstraintLayer(layers.Layer):
         box_sums = tf.reduce_sum(box_shape, axis=[2, 4])  # (batch, 3, 3, 9)
         box_penalty = tf.reduce_mean(tf.square(box_sums - ones))
         
-        # Cell constraint: each cell should have exactly one number
-        cell_sums = tf.reduce_sum(probs, axis=-1)  # (batch, 9, 9)
-        cell_penalty = tf.reduce_mean(tf.square(cell_sums - ones))
-        
         # Calculate total penalty in float32
         constraint_weight = tf.constant(self.constraint_weight, dtype=tf.float32)
-        total_penalty_f32 = constraint_weight * (row_penalty + col_penalty + box_penalty + cell_penalty)
+        total_penalty_f32 = constraint_weight * (row_penalty + col_penalty + box_penalty)
         
         # Add the loss in float32 (TensorFlow's add_loss expects float32)
         self.add_loss(total_penalty_f32)
         
+        # Update metrics only during training
+        if training:
+            self.total_penalty_metric.update_state(total_penalty_f32)
+            self.row_penalty_metric.update_state(row_penalty)
+            self.col_penalty_metric.update_state(col_penalty)
+            self.box_penalty_metric.update_state(box_penalty)
+
         # Return the inputs unchanged
         return inputs
     
@@ -128,3 +137,20 @@ class SudokuConstraintLayer(layers.Layer):
         config = super(SudokuConstraintLayer, self).get_config()
         config.update({"constraint_weight": self.constraint_weight})
         return config
+    
+    # Add metric properties to expose metrics
+    @property
+    def metrics(self):
+        return [
+            self.total_penalty_metric,
+            self.row_penalty_metric,
+            self.col_penalty_metric,
+            self.box_penalty_metric,
+        ]
+        
+    # Reset metrics at the end of each epoch
+    def reset_metrics(self):
+        self.total_penalty_metric.reset_states()
+        self.row_penalty_metric.reset_states()
+        self.col_penalty_metric.reset_states()
+        self.box_penalty_metric.reset_states()
