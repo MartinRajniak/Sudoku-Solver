@@ -31,22 +31,22 @@ class SudokuLoss(keras.losses.Loss):
         is_fixed_mask = tf.cast(
             tf.where(y_true >= 10, 0, 1), tf.float32
         )  # 1 for fixed, 0 for empty
+        is_fixed_mask = tf.reshape(is_fixed_mask, (-1, 9, 9))
+
+        is_empty_mask = tf.cast(
+            tf.where(y_true >= 10, 1, 0), tf.float32
+        )  # 0 for fixed, 1 for empty
+        is_empty_mask = tf.reshape(is_empty_mask, (-1, 9, 9))
 
         # Subtract mask so we have target digits again
         y_true_digits = tf.cast(tf.where(y_true >= 10, y_true - 10, y_true), tf.float32)
 
         # --- Standard Crossentropy for Empty/Predicted Cells ---
-        # TODO: do cross_entropy only for missing digits (fixed ones are handled by fixed cell penalty)
-        cross_entropy = keras.losses.sparse_categorical_crossentropy(
-            y_true_digits, y_pred, from_logits=False
-        )
-        mean_cross_entropy = tf.reduce_mean(cross_entropy)
+        mean_cross_entropy = self._masked_cross_entropy(y_true_digits, y_pred, is_empty_mask)
 
         # --- Fixed Cell Penalty ---
         y_true_digits = tf.reshape(y_true_digits, (-1, 9, 9))
         # print("y_true_digits ", y_true_digits[0])
-        is_fixed_mask = tf.reshape(is_fixed_mask, (-1, 9, 9))
-        # print("is_fixed_mask ", is_fixed_mask[0])
 
         predicted_numbers = tf.cast(tf.math.argmax(y_pred, axis=-1), tf.float32)
         # print("predicted_numbers ", predicted_numbers[0])
@@ -100,7 +100,7 @@ class SudokuLoss(keras.losses.Loss):
         # If y_true is the full solution, mean_cross_entropy covers both fixed and empty cells.
         # The fixed_cell_penalty adds an *extra* penalty for mismatch on fixed cells.
         total_loss = (
-            mean_cross_entropy + weighted_fixed_cell_penalty + total_constraint_penalty
+            mean_cross_entropy + weighted_fixed_cell_penalty * 0.0 + total_constraint_penalty
         )
 
         # --- Update Metrics ---
@@ -108,15 +108,59 @@ class SudokuLoss(keras.losses.Loss):
         self.crossentropy_tracker.update_state(mean_cross_entropy)
         self.cell_penalty_tracker.update_state(
             weighted_fixed_cell_penalty
-        )  # Track weighted penalty
+        )
         self.constraint_penalty_tracker.update_state(
             total_constraint_penalty
-        )  # Track weighted penalty
-        self.row_penalty_tracker.update_state(row_penalty)  # Track unweighted component
-        self.col_penalty_tracker.update_state(col_penalty)  # Track unweighted component
-        self.box_penalty_tracker.update_state(box_penalty)  # Track unweighted component
+        )
+        self.row_penalty_tracker.update_state(row_penalty)
+        self.col_penalty_tracker.update_state(col_penalty)
+        self.box_penalty_tracker.update_state(box_penalty)
 
         return total_loss
+
+    def _row_penalty(self, y_pred):
+        ones = tf.constant(1.0, dtype=tf.float32)
+
+        # Row constraint: Sum of probabilities for each digit in a row should be 1.
+        row_sums = tf.reduce_sum(y_pred, axis=2)  # Sum over columns -> (batch, 9, 9_digits)
+        row_penalty = tf.reduce_mean(tf.square(row_sums - ones))
+
+        return row_penalty
+
+
+    def _column_penalty(self, y_pred):
+        ones = tf.constant(1.0, dtype=tf.float32)
+
+        # Column constraint: Sum of probabilities for each digit in a column should be 1.
+        col_sums = tf.reduce_sum(y_pred, axis=1)  # Sum over rows -> (batch, 9, 9_digits)
+        col_penalty = tf.reduce_mean(tf.square(col_sums - ones))
+
+        return col_penalty
+
+
+    def _box_penalty(self, y_pred):
+        ones = tf.constant(1.0, dtype=tf.float32)
+
+        # Box constraint: Sum of probabilities for each digit in a 3x3 box should be 1.
+        # Reshape to easily sum over boxes: (batch, 3, 3, 3, 3, 9_digits)
+        box_probs = tf.reshape(y_pred, [-1, 3, 3, 3, 3, 9])
+        # Sum over cells within each box (axes 2 and 4) -> (batch, 3_row_blocks, 3_col_blocks, 9_digits)
+        box_sums = tf.reduce_sum(box_probs, axis=[2, 4])
+        box_penalty = tf.reduce_mean(tf.square(box_sums - ones))
+
+        return box_penalty
+
+
+    def _masked_cross_entropy(self, y_true, y_pred, mask):
+        cross_entropy = keras.losses.sparse_categorical_crossentropy(
+            y_true, y_pred, from_logits=False
+        )
+        print(cross_entropy)
+        print(mask)
+        masked_cross_entropy = cross_entropy * mask
+        mean_cross_entropy = tf.reduce_mean(masked_cross_entropy)
+        return mean_cross_entropy
+
 
     # TODO: metrics don't show up in model's metrics - I think this only works for Layer/Model subclasses
     # The `metrics` property allows Keras to automatically discover the trackers
