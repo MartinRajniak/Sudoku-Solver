@@ -67,8 +67,8 @@ def prepare_model(
 
     model.compile(
         optimizer=optimizers.Adam(learning_rate),
-        loss=custom_loss,
-        # loss=losses.SparseCategoricalCrossentropy(),
+        # loss=custom_loss,
+        loss=losses.SparseCategoricalCrossentropy(),
         metrics=["accuracy"],
     )
 
