@@ -95,7 +95,8 @@ class SudokuLoss(keras.losses.Loss):
 
         # Total constraint penalty
         total_constraint_penalty = self.constraint_weight * (
-            row_penalty + col_penalty + box_penalty + fixed_cell_penalty
+            # TODO: make fixed cell penalty weaker until penalty algorithm is rewritten
+            row_penalty + col_penalty + box_penalty + fixed_cell_penalty * 0.1
         )
 
         # --- Total Loss ---

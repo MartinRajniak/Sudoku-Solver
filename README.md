@@ -48,8 +48,8 @@ Deep learning used to solve Sudoku puzzles.
 15. Add FixedNumberLayer to replace predictions with fixed numbers
 100k samples - 30 Epochs - 54% test set accuracy
 
-16. Add Fixed Number penalty to loss function when predictions don't match fixed numbers
-???
-
-17. Add Sudoku Rule Penalty Weight Scheduler to gradually increase constraint weight in loss function
+16. Add Sudoku Rule Penalty Weight Scheduler to gradually increase constraint weight in loss function
 1500k samples - 100 Epochs - 87% test set accuracy
+
+17. Add Fixed Number penalty to loss function when predictions don't match fixed numbers
+1500k samples - 100 Epochs - 90% test set accuracy
