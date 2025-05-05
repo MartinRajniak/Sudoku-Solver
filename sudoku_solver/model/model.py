@@ -1,12 +1,14 @@
 import keras
-from keras import layers, optimizers, models, regularizers, losses, saving
+from keras import layers, optimizers, models, regularizers, losses, saving, Metric
 
 from sudoku_solver.model.loss import SudokuLoss
 
 import tensorflow as tf
 
+
 def prepare_model(
     use_residual=True,
+    use_fixed_number_layer=False,
     learning_rate=1e-3,
     fixed_cell_penalty_weight=0.1,
     constraint_weight=0.1,
@@ -63,26 +65,84 @@ def prepare_model(
 
     outputs = layers.Softmax()(x)
 
-    outputs = FixedNumberLayer()(inputs, outputs)
+    if use_fixed_number_layer:
+        outputs = FixedNumberLayer()(inputs, outputs)
 
     model = models.Model(inputs, outputs)
 
-    custom_loss = SudokuLoss(constraint_weight=constraint_weight, fixed_cell_weight=fixed_cell_penalty_weight)
+    custom_loss = SudokuLoss(
+        constraint_weight=constraint_weight, fixed_cell_weight=fixed_cell_penalty_weight
+    )
 
     model.compile(
         optimizer=optimizers.Adam(learning_rate),
         loss=custom_loss,
         # loss=losses.SparseCategoricalCrossentropy(),
-        metrics=["accuracy"],
+        metrics=["accuracy", SudokuRulesMetric()],
     )
 
     return model
+
+
+class SudokuRulesMetric(Metric):
+    def __init__(self, name="sudoku_rules", **kwargs):
+        super().__init__(name=name, **kwargs)
+        self.row_penalty_tracker = keras.metrics.Mean(name="row_penalty")
+        self.col_penalty_tracker = keras.metrics.Mean(name="col_penalty")
+        self.box_penalty_tracker = keras.metrics.Mean(name="box_penalty")
+    
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        row_penalty = self._row_penalty(y_pred)
+        col_penalty = self._column_penalty(y_pred)
+        box_penalty = self._box_penalty(y_pred)
+
+        self.row_penalty_tracker.update_state(row_penalty, sample_weight)
+        self.col_penalty_tracker.update_state(col_penalty, sample_weight)
+        self.box_penalty_tracker.update_state(box_penalty, sample_weight)
+
+    def result(self):
+        return {
+            self.row_penalty_tracker.name : self.row_penalty_tracker.result(),
+            self.col_penalty_tracker.name : self.col_penalty_tracker.result(),
+            self.box_penalty_tracker.name : self.box_penalty_tracker.result(),
+        }
+    
+    # TODO: copied from loss function - find common place
+
+    def _row_penalty(self, y_pred):
+        # Row constraint: Sum of probabilities for each digit in a row should be 1.
+        row_sums = tf.reduce_sum(y_pred, axis=2)  # Sum over columns -> (batch, 9, 9_digits)
+        ones = tf.ones_like(row_sums)
+        row_penalty = tf.reduce_mean(tf.square(row_sums - ones))
+
+        return row_penalty
+
+
+    def _column_penalty(self, y_pred):
+        # Column constraint: Sum of probabilities for each digit in a column should be 1.
+        col_sums = tf.reduce_sum(y_pred, axis=1)  # Sum over rows -> (batch, 9, 9_digits)
+        ones = tf.ones_like(col_sums)
+        col_penalty = tf.reduce_mean(tf.square(col_sums - ones))
+
+        return col_penalty
+
+
+    def _box_penalty(self, y_pred):
+        # Box constraint: Sum of probabilities for each digit in a 3x3 box should be 1.
+        # Reshape to easily sum over boxes: (batch, 3, 3, 3, 3, 9_digits)
+        box_probs = tf.reshape(y_pred, [-1, 3, 3, 3, 3, 9])
+        # Sum over cells within each box (axes 2 and 4) -> (batch, 3_row_blocks, 3_col_blocks, 9_digits)
+        box_sums = tf.reduce_sum(box_probs, axis=[2, 4])
+        ones = tf.ones_like(box_sums)
+        box_penalty = tf.reduce_mean(tf.square(box_sums - ones))
+
+        return box_penalty
 
 @keras.saving.register_keras_serializable()
 class FixedNumberLayer(layers.Layer):
     def __init__(self):
         super().__init__()
-    
+
     @tf.function
     def call(self, inputs, x):
 
@@ -113,10 +173,10 @@ class FixedNumberLayer(layers.Layer):
         indices_for_one_hot = input_digits - 1
         output_part_if_nonzero = tf.one_hot(
             indices_for_one_hot,
-            depth=9,           # Corresponds to the last dimension size of x
+            depth=9,  # Corresponds to the last dimension size of x
             on_value=1.0,
             off_value=0.0,
-            dtype=x.dtype      # Ensure output dtype matches x
+            dtype=x.dtype,  # Ensure output dtype matches x
         )
 
         # 4. Combine the results
@@ -126,4 +186,3 @@ class FixedNumberLayer(layers.Layer):
         final_outputs = output_part_if_zero + output_part_if_nonzero
 
         return final_outputs
-
