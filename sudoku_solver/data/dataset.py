@@ -108,7 +108,7 @@ def prepare_dataset(batch_size: int, size_limit: int = None, use_disk_cache=Fals
     train_datasets = []
     for index, train_loaded_dataset in enumerate(train_loaded_datasets):
         # Temp - testing
-        # train_loaded_dataset = train_loaded_dataset.map(add_fixed_number_flag, num_parallel_calls=tf.data.AUTOTUNE)
+        train_loaded_dataset = train_loaded_dataset.map(add_fixed_number_flag, num_parallel_calls=tf.data.AUTOTUNE)
 
         train_dataset = configure_for_performance(
             train_loaded_dataset,

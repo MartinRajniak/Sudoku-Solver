@@ -155,8 +155,6 @@ class SudokuLoss(keras.losses.Loss):
         cross_entropy = keras.losses.sparse_categorical_crossentropy(
             y_true, y_pred, from_logits=False
         )
-        print(cross_entropy)
-        print(mask)
         masked_cross_entropy = cross_entropy * mask
         mean_cross_entropy = tf.reduce_mean(masked_cross_entropy)
         return mean_cross_entropy

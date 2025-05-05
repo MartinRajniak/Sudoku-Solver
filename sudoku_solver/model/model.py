@@ -1,7 +1,9 @@
-from keras import layers, optimizers, models, regularizers, losses
+import keras
+from keras import layers, optimizers, models, regularizers, losses, saving
 
 from sudoku_solver.model.loss import SudokuLoss
 
+import tensorflow as tf
 
 def prepare_model(
     use_residual=True,
@@ -61,15 +63,67 @@ def prepare_model(
 
     outputs = layers.Softmax()(x)
 
+    outputs = FixedNumberLayer()(inputs, outputs)
+
     model = models.Model(inputs, outputs)
 
     custom_loss = SudokuLoss(constraint_weight=constraint_weight, fixed_cell_weight=fixed_cell_penalty_weight)
 
     model.compile(
         optimizer=optimizers.Adam(learning_rate),
-        # loss=custom_loss,
-        loss=losses.SparseCategoricalCrossentropy(),
+        loss=custom_loss,
+        # loss=losses.SparseCategoricalCrossentropy(),
         metrics=["accuracy"],
     )
 
     return model
+
+@keras.saving.register_keras_serializable()
+class FixedNumberLayer(layers.Layer):
+    def __init__(self):
+        super().__init__()
+    
+    @tf.function
+    def call(self, inputs, x):
+
+        # 1. Preprocess Inputs: Scale, round, clip, and cast to integer
+        # Assuming original inputs might be e.g., [-0.5, 0.5] or [0, 1]
+        # Adjust scaling/offset if your normalization is different
+        scaled_inputs = (inputs + 0.5) * 9.0
+        rounded_inputs = tf.round(scaled_inputs)
+        # Ensure values are within the expected range [0, 9]
+        clipped_inputs = tf.clip_by_value(rounded_inputs, 0.0, 9.0)
+        # Cast to integer type for indexing and comparison
+        # Squeeze the last dimension (1) to make it (batch, 9, 9)
+        input_digits = tf.squeeze(tf.cast(clipped_inputs, tf.int32), axis=-1)
+
+        # 2. Handle the condition where input_digit == 0
+        # Create a boolean mask where input_digits is 0
+        is_zero_mask = tf.equal(input_digits, 0)
+        # Expand mask dims to match x's rank for broadcasting: (-1, 9, 9, 1)
+        is_zero_mask_expanded = tf.expand_dims(is_zero_mask, axis=-1)
+        # Where mask is True, take values from x; otherwise, take zeros.
+        output_part_if_zero = tf.where(is_zero_mask_expanded, x, tf.zeros_like(x))
+
+        # 3. Handle the condition where input_digit != 0
+        # Create one-hot vectors based on input_digits.
+        # The depth is 9 (for indices 0-8).
+        # input_digits are 1-9. Subtract 1 to get indices 0-8.
+        # tf.one_hot handles negative indices (-1 when input_digit was 0) by producing all zeros.
+        indices_for_one_hot = input_digits - 1
+        output_part_if_nonzero = tf.one_hot(
+            indices_for_one_hot,
+            depth=9,           # Corresponds to the last dimension size of x
+            on_value=1.0,
+            off_value=0.0,
+            dtype=x.dtype      # Ensure output dtype matches x
+        )
+
+        # 4. Combine the results
+        # Where input was 0, output_part_if_nonzero is all zeros (due to index -1).
+        # Where input was non-zero, output_part_if_zero is all zeros.
+        # So, we can simply add them.
+        final_outputs = output_part_if_zero + output_part_if_nonzero
+
+        return final_outputs
+
