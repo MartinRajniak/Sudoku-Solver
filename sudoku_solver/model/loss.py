@@ -67,9 +67,7 @@ class SudokuLoss(keras.losses.Loss):
         fixed_cell_error = tf.reduce_sum(masked_pred_diff, axis=[1, 2])
         # print("fixed_cell_error ", fixed_cell_error)
 
-        weighted_fixed_cell_penalty = (
-            tf.reduce_mean(fixed_cell_error) * self.fixed_cell_weight
-        )
+        fixed_cell_penalty = tf.reduce_mean(fixed_cell_error)
         # print("weighted_fixed_cell_penalty ", fixed_cell_penalty)
 
         # --- Sudoku Constraint Penalties ---
@@ -97,7 +95,7 @@ class SudokuLoss(keras.losses.Loss):
 
         # Total constraint penalty
         total_constraint_penalty = self.constraint_weight * (
-            row_penalty + col_penalty + box_penalty
+            row_penalty + col_penalty + box_penalty + fixed_cell_penalty
         )
 
         # --- Total Loss ---
@@ -105,22 +103,18 @@ class SudokuLoss(keras.losses.Loss):
         # depending on whether y_true represents the full solution or just fixed cells.
         # If y_true is the full solution, mean_cross_entropy covers both fixed and empty cells.
         # The fixed_cell_penalty adds an *extra* penalty for mismatch on fixed cells.
-        total_loss = (
-            mean_cross_entropy + weighted_fixed_cell_penalty * 0.0 + total_constraint_penalty
-        )
+        total_loss = mean_cross_entropy + total_constraint_penalty
 
         # --- Update Metrics ---
         # Use the Loss class's metric attributes directly
         self.crossentropy_tracker.update_state(mean_cross_entropy)
-        self.cell_penalty_tracker.update_state(
-            weighted_fixed_cell_penalty
-        )
         self.constraint_penalty_tracker.update_state(
             total_constraint_penalty
         )
         self.row_penalty_tracker.update_state(row_penalty)
         self.col_penalty_tracker.update_state(col_penalty)
         self.box_penalty_tracker.update_state(box_penalty)
+        self.cell_penalty_tracker.update_state(fixed_cell_penalty)
 
         return total_loss
 

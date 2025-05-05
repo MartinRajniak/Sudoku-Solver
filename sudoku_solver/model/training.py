@@ -38,7 +38,7 @@ def prepare_callbacks():
             # update_freq="batch",
             # profile_batch='20000,20005'
         ),
-        # PrintPenalties(),
+        PrintPenalties(),
         SudokuRulesWeightScheduler(),
     ]
 
@@ -63,11 +63,11 @@ class PrintPenalties(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         print("\nPenalties:")
         print("crossentropy_tracker: ", self.model.loss.crossentropy_tracker.result())
-        print("cell_penalty_tracker: ", self.model.loss.cell_penalty_tracker.result())
-        print("constraint_penalty_tracker: ", self.model.loss.constraint_penalty_tracker.result())
+        print("total_penalty_tracker: ", self.model.loss.constraint_penalty_tracker.result())
         print("row_penalty_tracker: ", self.model.loss.row_penalty_tracker.result())
         print("col_penalty_tracker: ", self.model.loss.col_penalty_tracker.result())
         print("box_penalty_tracker: ", self.model.loss.box_penalty_tracker.result())
+        print("cell_penalty_tracker: ", self.model.loss.cell_penalty_tracker.result())
 
 # def pretrain_model():
 #     if (USE_PRE_TRAINING):
