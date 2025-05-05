@@ -8,7 +8,13 @@ class SudokuLoss(keras.losses.Loss):
         self, constraint_weight=0.1, fixed_cell_weight=1.0, name="sudoku_loss", **kwargs
     ):
         super().__init__(name=name, **kwargs)
-        self.constraint_weight = tf.constant(constraint_weight, dtype=tf.float32)
+        self._constraint_weight = keras.Variable(
+            constraint_weight,
+            name="constraint_weight",
+            dtype=tf.float32,
+            trainable=False,
+            aggregation="only_first_replica",
+        )
         self.fixed_cell_weight = tf.constant(fixed_cell_weight, dtype=tf.float32)
 
         # Initialize metric trackers
@@ -117,6 +123,14 @@ class SudokuLoss(keras.losses.Loss):
         self.box_penalty_tracker.update_state(box_penalty)
 
         return total_loss
+
+    @property
+    def constraint_weight(self):
+        return self._constraint_weight
+
+    @constraint_weight.setter
+    def constraint_weight(self, value):
+        self._constraint_weight.assign(value)
 
     def _row_penalty(self, y_pred):
         ones = tf.constant(1.0, dtype=tf.float32)

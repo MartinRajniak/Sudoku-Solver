@@ -39,7 +39,21 @@ def prepare_callbacks():
             # profile_batch='20000,20005'
         ),
         # PrintPenalties(),
+        SudokuRulesWeightScheduler(),
     ]
+
+class SudokuRulesWeightScheduler(keras.callbacks.Callback):
+
+    def __init__(self):
+        super().__init__()
+
+    def on_epoch_end(self, epoch, logs=None):
+        # TODO: take into account total epochs
+        print(epoch, self.model.loss.constraint_weight)
+        if (epoch == 30):
+            self.model.loss.constraint_weight = 1.0
+        elif (epoch == 60):
+            self.model.loss.constraint_weight = 10.0
 
 class PrintPenalties(keras.callbacks.Callback):
 
