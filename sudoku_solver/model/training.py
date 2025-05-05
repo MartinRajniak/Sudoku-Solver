@@ -38,7 +38,7 @@ def prepare_callbacks():
             # update_freq="batch",
             # profile_batch='20000,20005'
         ),
-        PrintPenalties(),
+        # PrintPenalties(),
     ]
 
 class PrintPenalties(keras.callbacks.Callback):

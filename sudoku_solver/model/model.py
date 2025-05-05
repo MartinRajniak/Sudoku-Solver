@@ -83,7 +83,7 @@ def prepare_model(
 
     return model
 
-
+@keras.saving.register_keras_serializable()
 class SudokuRulesMetric(Metric):
     def __init__(self, name="sudoku_rules", **kwargs):
         super().__init__(name=name, **kwargs)
