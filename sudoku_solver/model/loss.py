@@ -6,6 +6,7 @@ import keras
 class SudokuLoss(keras.losses.Loss):
     def __init__(self, constraint_weight=0.1, name="sudoku_loss", **kwargs):
         super().__init__(name=name, **kwargs)
+
         self._constraint_weight = keras.Variable(
             constraint_weight,
             name="constraint_weight",
@@ -169,10 +170,11 @@ class SudokuLoss(keras.losses.Loss):
 
     def get_config(self):
         """Returns the config dictionary for serialization."""
+
         base_config = super().get_config()
         return {
             **base_config,
-            "constraint_weight": self.constraint_weight,
+            "constraint_weight": float(self.constraint_weight.numpy()),
         }
 
     @classmethod

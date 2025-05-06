@@ -1,55 +1,148 @@
 # Sudoku-Solver
-Deep learning used to solve Sudoku puzzles.
+
+A deep learning approach to solving Sudoku puzzles.
+
+## Findings
+
+**1. Custom Loss Function Improves Convergence**
+
+The use of a custom loss function that explicitly guides training according to Sudoku rules significantly accelerates the learning process.
+
+**Comparison (100k samples, 30 Epochs, ~4 min training time):**
+
+* **Cross-Entropy Loss Only:** 11% test set accuracy
+* **Hybrid Loss:** 76% test set accuracy
 
 ## Experiments
 
-1. Basic Conv2D solution
-900k samples - 1 Epoch - 80% test set accuracy
+This section details the various experiments conducted to optimize the Sudoku solver model. Each experiment explores different architectural changes, training strategies, and loss functions to improve performance.
 
-2. Update architecture to allow model learn specific Sudoku features (Row, Column and Box constraint awareness)
-900k samples - 1 Epoch - 82% test set accuracy
+**1. Basic Conv2D Solution**
 
-3. Deeper model 
-900k samples - 1 Epoch - 82% test set accuracy
+* **Dataset:** 900k samples
+* **Epochs:** 1
+* **Test Set Accuracy:** 80%
 
-4. Residual connections
-900k samples - 1 Epoch - 83% test set accuracy
+**2. Architecture Update (Row, Column, and Box Awareness)**
 
-5. Progressive learning (first train on easy puzzles and gradually increase difficulty)
-900k samples - 1 Epoch - 83% test set accuracy
+* **Description:** Modify the architecture to explicitly learn Sudoku constraints.
+* **Dataset:** 900k samples
+* **Epochs:** 1
+* **Test Set Accuracy:** 82%
 
-6. Increase epochs to 5
-900k samples - 5 Epochs - 86% test set accuracy
+**3. Deeper Model**
 
-7. Increase epochs to 10
-900k samples - 10 Epochs - 86% test set accuracy (EarlyStopping usually stopped training early)
+* **Description:** Investigate the impact of increasing model depth.
+* **Dataset:** 900k samples
+* **Epochs:** 1
+* **Test Set Accuracy:** 82%
 
-8. Add regularization
-900k samples - 10 Epochs - 86% test set accuracy
+**4. Residual Connections**
 
-9. Use 20% of training set
-1800k samples - 10 Epochs - 88% test set accuracy
+* **Description:** Implement residual connections to aid in training deeper networks.
+* **Dataset:** 900k samples
+* **Epochs:** 1
+* **Test Set Accuracy:** 83%
 
-10. Pre-training on puzzle solutions (target) only
-1800k samples - 1 Epoch - 82% test set accuracy
+**5. Progressive Learning (Difficulty-Based Training)**
 
-11. Full train set but with shallower model (15M vs 4M params)
-9000k samples - 50 Epochs - 85% test set accuracy 
+* **Description:** Train the model on easier puzzles first, gradually increasing difficulty.
+* **Dataset:** 900k samples
+* **Epochs:** 1
+* **Test Set Accuracy:** 83%
 
-12. Full train set but with even shallower model (4M vs 1M params)
-9000k samples - 50 Epochs - 85% test set accuracy
+**6. Increased Epochs**
 
-13. Deeper model (4M vs 8M) using more difficulty bins (3 vs. 10)
-5000k samples - 30 Epochs - 90% test set accuracy
+* **Description:** Evaluate the effect of training for a longer duration.
+* **Dataset:** 900k samples
+* **Epochs:** 5
+* **Test Set Accuracy:** 86%
 
-14. Use hybrid loss function mixing Cross-Entropy and Sudoku Rule Penalties
-500k samples - 30 Epochs - 80% test set accuracy (faster convergence)
+**7. Further Increase in Epochs with Early Stopping**
 
-15. Add FixedNumberLayer to replace predictions with fixed numbers
-100k samples - 30 Epochs - 54% test set accuracy
+* **Description:** Observe the impact of even longer training with early stopping to prevent overfitting.
+* **Dataset:** 900k samples
+* **Epochs:** 10 (EarlyStopping applied)
+* **Test Set Accuracy:** 86% (Training often stopped early)
 
-16. Add Sudoku Rule Penalty Weight Scheduler to gradually increase constraint weight in loss function
-1500k samples - 100 Epochs - 87% test set accuracy
+**8. Regularization**
 
-17. Add Fixed Number penalty to loss function when predictions don't match fixed numbers
-1500k samples - 100 Epochs - 90% test set accuracy
+* **Description:** Add regularization techniques to improve generalization.
+* **Dataset:** 900k samples
+* **Epochs:** 10
+* **Test Set Accuracy:** 86%
+
+**9. Increased Training Data**
+
+* **Description:** Assess the benefit of a larger training dataset.
+* **Dataset:** 1.8M samples
+* **Epochs:** 10
+* **Test Set Accuracy:** 88%
+
+**10. Pre-training on Puzzle Solutions (Target Only)**
+
+* **Description:** Explore pre-training the model solely on solved Sudoku grids.
+* **Dataset:** 1.8M samples
+* **Epochs:** 1
+* **Test Set Accuracy:** 82%
+
+**11. Shallower Model with More Data (15M vs 4M Parameters)**
+
+* **Description:** Compare a shallower model trained on a significantly larger dataset.
+* **Dataset:** 9M samples
+* **Epochs:** 50
+* **Test Set Accuracy:** 85%
+
+**12. Even Shallower Model with More Data (4M vs 1M Parameters)**
+
+* **Description:** Further investigate the trade-off between model depth and dataset size.
+* **Dataset:** 9M samples
+* **Epochs:** 50
+* **Test Set Accuracy:** 85%
+
+**13. Deeper Model with More Difficulty Bins**
+
+* **Description:** Train a deeper model with a more granular categorization of puzzle difficulty.
+* **Model Parameters:** 8M (vs 4M)
+* **Difficulty Bins:** 10 (vs 3)
+* **Dataset:** 5M samples
+* **Epochs:** 30
+* **Test Set Accuracy:** 90%
+
+**14. Hybrid Loss Function (Cross-Entropy + Sudoku Rule Penalties)**
+
+* **Description:** Incorporate Sudoku rule awareness directly into the loss function.
+* **Dataset:** 500k samples
+* **Epochs:** 30
+* **Test Set Accuracy:** 80% (Faster convergence observed)
+
+**15. FixedNumberLayer**
+
+* **Description:** Experiment with a layer that forces predictions to match the fixed numbers in the puzzle.
+* **Dataset:** 100k samples
+* **Epochs:** 30
+* **Test Set Accuracy:** 54%
+
+**16. Sudoku Rule Penalty Weight Scheduler**
+
+* **Description:** Gradually increase the weight of the Sudoku rule penalties during training.
+* **Dataset:** 1.5M samples
+* **Epochs:** 100
+* **Test Set Accuracy:** 87%
+
+**17. Fixed Number Penalty in Loss Function**
+
+* **Description:** Penalize the model when its predictions don't align with the initially given numbers.
+* **Dataset:** 1.5M samples
+* **Epochs:** 100
+* **Test Set Accuracy:** 90%
+
+**18. Adjusted Hybrid Loss Function**
+
+* **Description:** Fine-tune the weights of different components in the hybrid loss function:
+    * Empty Cell Cross-Entropy (CE) - Weight 1
+    * Fixed Cell MSE - Weight 10
+    * Sudoku Rules MSE - Weight 0.1
+* **Dataset:** 100k samples
+* **Epochs:** 30
+* **Test Set Accuracy:** 76% (Achieved after only 4 minutes of training)
