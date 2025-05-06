@@ -4,12 +4,20 @@ import keras
 
 @keras.saving.register_keras_serializable()
 class SudokuLoss(keras.losses.Loss):
-    def __init__(self, constraint_weight=0.1, name="sudoku_loss", **kwargs):
+    def __init__(self, constraint_weight=0.1, fixed_cell_weight=10, name="sudoku_loss", **kwargs):
         super().__init__(name=name, **kwargs)
 
         self._constraint_weight = keras.Variable(
             constraint_weight,
             name="constraint_weight",
+            dtype=tf.float32,
+            trainable=False,
+            aggregation="only_first_replica",
+        )
+
+        self._fixed_cell_weight = keras.Variable(
+            fixed_cell_weight,
+            name="fixed_cell_weight",
             dtype=tf.float32,
             trainable=False,
             aggregation="only_first_replica",
@@ -55,7 +63,7 @@ class SudokuLoss(keras.losses.Loss):
 
         fixed_cell_penalty = self._fixed_number_penalty(
             y_true_digits, y_pred, is_fixed_mask
-        )
+        ) * self.fixed_cell_weight
         row_penalty = self._row_penalty(y_pred)
         col_penalty = self._column_penalty(y_pred)
         box_penalty = self._box_penalty(y_pred)
@@ -69,7 +77,7 @@ class SudokuLoss(keras.losses.Loss):
             # otherwise we could just use cross-entropy to check fixed number predictions
             mean_cross_entropy
             + total_constraint_penalty
-            + fixed_cell_penalty * 10
+            + fixed_cell_penalty 
         )
 
         # --- Update Metrics ---
@@ -90,6 +98,14 @@ class SudokuLoss(keras.losses.Loss):
     @constraint_weight.setter
     def constraint_weight(self, value):
         self._constraint_weight.assign(value)
+
+    @property
+    def fixed_cell_weight(self):
+        return self._fixed_cell_weight
+
+    @fixed_cell_weight.setter
+    def fixed_cell_weight(self, value):
+        self._fixed_cell_weight.assign(value)
 
     # --- Sudoku Constraint Penalties ---
 
@@ -175,6 +191,7 @@ class SudokuLoss(keras.losses.Loss):
         return {
             **base_config,
             "constraint_weight": float(self.constraint_weight.numpy()),
+            "fixed_cell_weight": float(self.fixed_cell_weight.numpy()),
         }
 
     @classmethod

@@ -11,6 +11,7 @@ def prepare_model(
     use_fixed_number_layer=False,
     learning_rate=1e-3,
     constraint_weight=0.1,
+    fixed_cell_weight=10,
 ):
     inputs = layers.Input((9, 9, 1))
 
@@ -69,7 +70,7 @@ def prepare_model(
 
     model = models.Model(inputs, outputs)
 
-    custom_loss = SudokuLoss(constraint_weight=constraint_weight)
+    custom_loss = SudokuLoss(constraint_weight, fixed_cell_weight)
 
     model.compile(
         optimizer=optimizers.Adam(learning_rate),
