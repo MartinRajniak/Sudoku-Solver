@@ -18,13 +18,13 @@ PRECISION = 10**4
 
 def _convert_to_target_tensor(y):
     # Convert digits to one-hot encoded format (perfect predictions)
-    target = np.zeros((1, 9, 9, 1))  # One batch
+    target = np.zeros((1, 9, 9))  # One batch
     for i in range(9):
         for j in range(9):
             digit = y[i, j] - 1  # Convert 1-9 to 0-8
-            target[0, i, j, 0] = digit
+            target[0, i, j] = digit
 
-    target_tensor = tf.constant(target, dtype=tf.float32)
+    target_tensor = tf.constant(target, dtype=tf.int32)
     return target_tensor
 
 
@@ -152,25 +152,45 @@ class TestStringMethods(unittest.TestCase):
             int(box_penalty * PRECISION), int(4 / TOTAL_PUZZLE_NUMBERS * PRECISION)
         )
 
-    def test_error_in_empty(self):
+    def test_cross_entropy_error_in_empty(self):
         target_tensor = _convert_to_target_tensor(VALID_SOLUTION)
         predictions_tensor = _convert_to_predictions_tensor(WRONG_ONE_ROW_TWO_NUMBERS)
+        empty_cell_mask = MASK_EMPTY.reshape(1, 9, 9)
         cross_entropy = self.sudoku_loss._masked_cross_entropy(
             target_tensor,
             predictions_tensor,
-            MASK_ONE_ROW_TWO_NUMBERS.reshape(1, 9, 9),
+            empty_cell_mask,
         )
         self.assertGreater(int(cross_entropy * PRECISION), 0)
 
-    def test_error_in_fixed(self):
+    def test_cross_entropy_error_in_fixed(self):
         target_tensor = _convert_to_target_tensor(VALID_SOLUTION)
         predictions_tensor = _convert_to_predictions_tensor(WRONG_ONE_ROW_TWO_NUMBERS)
+        inverted_empty_mask = tf.cast(MASK_EMPTY.reshape(1, 9, 9) == 0, tf.float32)
         cross_entropy = self.sudoku_loss._masked_cross_entropy(
             target_tensor,
             predictions_tensor,
-            np.zeros((1, 9, 9)),
+            inverted_empty_mask,
         )
         self.assertEqual(int(cross_entropy * PRECISION), 0)
+
+    def test_fixed_penalty_error_in_empty(self):
+        target_tensor = _convert_to_target_tensor(VALID_SOLUTION)
+        predictions_tensor = _convert_to_predictions_tensor(WRONG_ONE_ROW_TWO_NUMBERS)
+        fixed_cell_mask = tf.cast(MASK_EMPTY.reshape(1, 9, 9) == 0, tf.float32)
+        penalty = self.sudoku_loss._fixed_number_penalty(
+            target_tensor, predictions_tensor, fixed_cell_mask
+        )
+        self.assertEqual(int(penalty * PRECISION), 0)
+
+    def test_fixed_penalty_error_in_fixed(self):
+        target_tensor = _convert_to_target_tensor(VALID_SOLUTION)
+        predictions_tensor = _convert_to_predictions_tensor(WRONG_ONE_ROW_THREE_NUMBERS)
+        fixed_cell_mask = tf.cast(MASK_EMPTY.reshape(1, 9, 9) == 0, tf.float32)
+        penalty = self.sudoku_loss._fixed_number_penalty(
+            target_tensor, predictions_tensor, fixed_cell_mask
+        )
+        self.assertGreater(int(penalty * PRECISION), 0)
 
 
 if __name__ == "__main__":
