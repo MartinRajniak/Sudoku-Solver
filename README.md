@@ -201,3 +201,14 @@ This section details the various experiments conducted to optimize the Sudoku so
 * **Epochs:** 30
 * **Test Set Accuracy:** 81% 
 * **Training Time:** 26 minutes
+
+**23. Shuffle concatenated datasets**
+* **Dataset:** 100k samples (eq. 1M with curriculum)
+* **Epochs:** 30
+* **Test Set Accuracy:** 84% 
+* **Training Time:** 26 minutes
+* 
+* **Dataset:** 200k samples (eq. 2M with curriculum)
+* **Epochs:** 30
+* **Test Set Accuracy:** 87%
+* **Training Time:** 56 minutes
