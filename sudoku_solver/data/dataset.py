@@ -1,6 +1,7 @@
 from sudoku_solver.utils.dataset import print_pipeline_performance
 from sudoku_solver.data.preprocess import preprocess_dataset, limit_dataset
 from sudoku_solver.data.serialization import load_from_disk, save_to_disk
+from sudoku_solver.data.mask import *
 
 import kagglehub
 import os
@@ -11,20 +12,11 @@ import tensorflow as tf
 
 import shutil
 
+TOTAL_DATASET_SIZE = 9_000_000
+
 ROOT_CACHE_DIR = "cache"
 
-
-# Input pipeline
-@tf.function
-def add_fixed_number_flag(X, y):
-    is_empty_mask = X == -0.5  # -0.5 is preprocessed 0
-
-    modified_values = 10 + y  # add 10 so we know that digit was empty in input
-
-    y = tf.where(is_empty_mask, modified_values, y)
-
-    return X, y
-
+# ---Input pipeline---
 
 def configure_for_performance(
     ds: tf.data.Dataset, shuffle, batch_size, use_disk_cache=False, cache_dir=None
@@ -109,9 +101,8 @@ def prepare_dataset(batch_size: int, size_limit: int = None, use_disk_cache=Fals
     # Configure input pipeline for performance
     train_datasets = []
     for index, train_loaded_dataset in enumerate(train_loaded_datasets):
-        # TODO: if we use Loss layer instead of Loss function, we wouldn't need to mask data
         train_loaded_dataset = train_loaded_dataset.map(
-            add_fixed_number_flag, num_parallel_calls=tf.data.AUTOTUNE
+            add_fixed_number_mask, num_parallel_calls=tf.data.AUTOTUNE
         )
 
         train_dataset = configure_for_performance(

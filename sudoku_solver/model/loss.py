@@ -1,6 +1,8 @@
 import tensorflow as tf
 import keras
 
+from sudoku_solver.data.mask import *
+
 @keras.saving.register_keras_serializable()
 class SudokuLoss(keras.losses.Loss):
     def __init__(self, constraint_weight=0.1, fixed_cell_weight=10, name="sudoku_loss", **kwargs):
@@ -34,7 +36,7 @@ class SudokuLoss(keras.losses.Loss):
     def call(self, y_true, y_pred):
         # Cast to float32 to avoid mixed precision issues
         y_pred = tf.cast(y_pred, tf.float32)
-        y_true = tf.cast(y_true, tf.float32)
+        y_true = tf.cast(y_true, tf.int32)
 
         # --- Masking ---
 
@@ -51,9 +53,7 @@ class SudokuLoss(keras.losses.Loss):
         is_empty_mask = tf.reshape(is_empty_mask, (-1, 9, 9))
 
         # Subtract mask so we have target digits again
-        y_true_digits = tf.reshape(
-            tf.cast(tf.where(y_true >= 10, y_true - 10, y_true), tf.int32), (-1, 9, 9)
-        )
+        y_true_digits = tf.reshape(remove_fixed_number_mask(y_true), (-1, 9, 9))
 
         # Standard Crossentropy for Empty/Predicted Cells
         mean_cross_entropy = self._masked_cross_entropy(

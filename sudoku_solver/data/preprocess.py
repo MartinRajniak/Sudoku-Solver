@@ -16,7 +16,6 @@ def preprocess(puzzle_tensor):
     # This works correctly because the digits '0'-'9' are consecutive in ASCII
     numbers = byte_values - tf.constant(ord("0"), dtype=tf.uint8)
 
-    # TODO: See if we still need int32
     numbers = tf.cast(numbers, tf.int32)
 
     return tf.reshape(numbers, (9, 9, 1))
@@ -36,6 +35,12 @@ def preprocess_target(puzzle_tensor):
 def preprocess_map(X, y):
     return (preprocess_input(X), preprocess_target(y))
 
+# TODO: see if we don't convert to numpy, if we can reuse this function elsewhere
+def inverse_preprocess_input(X):
+    return ((X + 0.5) * 9).numpy().reshape((9, 9)).astype(int)
+
+def inverse_preprocess_target(y):
+    return (y + 1).numpy().reshape((9, 9)).astype(int)
 
 def replace_rare_difficulties(difficulties):
     # Replace difficulties that are rare with the most common one so that we can split evenly

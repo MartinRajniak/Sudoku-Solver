@@ -88,7 +88,7 @@ class SudokuAccuracyMetric(keras.metrics.SparseCategoricalAccuracy):
         super().__init__(name, **kwargs)
     
     def update_state(self, y_true, y_pred, sample_weight=None):
-        y_true_digits = remove_mask_from_target(y_true)
+        y_true_digits = remove_fixed_number_mask(y_true)
         super().update_state(y_true_digits, y_pred, sample_weight)
 
 @keras.saving.register_keras_serializable()
