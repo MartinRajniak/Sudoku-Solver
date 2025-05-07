@@ -112,6 +112,7 @@ This section details the various experiments conducted to optimize the Sudoku so
 **14. Hybrid Loss Function (Cross-Entropy + Sudoku Rule Penalties)**
 
 * **Description:** Incorporate Sudoku rule awareness directly into the loss function.
+* **Result:** 
 * **Dataset:** 500k samples
 * **Epochs:** 30
 * **Test Set Accuracy:** 80% (Faster convergence observed)
@@ -119,6 +120,7 @@ This section details the various experiments conducted to optimize the Sudoku so
 **15. FixedNumberLayer**
 
 * **Description:** Experiment with a layer that forces predictions to match the fixed numbers in the puzzle.
+* **Result:** The accuracy is very similar to accuracy of basic Conv2D model when we replace fixed cell predictions with actuall fixed numbers. It doesn't seem to help accuracy in the long run and it might even hurt model's learning ability.
 * **Dataset:** 100k samples
 * **Epochs:** 30
 * **Test Set Accuracy:** 54%
@@ -126,6 +128,7 @@ This section details the various experiments conducted to optimize the Sudoku so
 **16. Sudoku Rule Penalty Weight Scheduler**
 
 * **Description:** Gradually increase the weight of the Sudoku rule penalties during training.
+* **Result:** The way weights were increased didn't help to achieve better accuracy. However, from other tests we see that different puzzles require different weights, so we just need to find better weight schedule.
 * **Dataset:** 1.5M samples
 * **Epochs:** 100
 * **Test Set Accuracy:** 87%
@@ -133,6 +136,7 @@ This section details the various experiments conducted to optimize the Sudoku so
 **17. Fixed Number Penalty in Loss Function**
 
 * **Description:** Penalize the model when its predictions don't align with the initially given numbers.
+* **Result:** Model is effective in keeping the fixed numbers intact. However, what is strange is that even without fixed number penalty, model still gives very good fixed number estimates.
 * **Dataset:** 1.5M samples
 * **Epochs:** 100
 * **Test Set Accuracy:** 90%
@@ -143,6 +147,7 @@ This section details the various experiments conducted to optimize the Sudoku so
     * Empty Cell Cross-Entropy (CE) - Weight 1
     * Fixed Cell MSE - Weight 10
     * Sudoku Rules MSE - Weight 0.1
+* **Result:** Amazingly fast convergence and very high fixed numbers accuracy. However, training is very sensitive to amount of epochs spent on easy difficulties. Train with easy difficulties only until model learns pattern and then switch to more difficult ones (15 epochs with 200k or 3 epochs first 100k samples).
 * **Dataset:** 100k samples
 * **Epochs:** 30
 * **Test Set Accuracy:** 76% (Achieved after only 4 minutes of training)
@@ -154,6 +159,7 @@ This section details the various experiments conducted to optimize the Sudoku so
 **19. Create mixed datasets**
 
 * **Description:** To avoid catastrophic forgetting, each difficulty dataset (10) is mixed with difficulties that model has already seen (80% vs. 20%).
+* **Result:** Mixed datasets have worse performance and converge much later. Shuffling them helps a bit but they still come short. Probably mix datasets only when fine-tuning after proper training is done.
 * **Dataset:** 200k samples
 * **Epochs:** 30
 * **Test Set Accuracy:** 75% (Achieved after only 8 minutes of training)
