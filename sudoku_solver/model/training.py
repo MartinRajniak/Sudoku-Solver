@@ -49,7 +49,8 @@ class SudokuRulesWeightScheduler(keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         # TODO: take into account total epochs
-        print(epoch, self.model.loss.constraint_weight)
+        print("constraint_weight ", self.model.loss.constraint_weight)
+        print("fixed_cell_weight ", self.model.loss.fixed_cell_weight)
         if (epoch == 30):
             self.model.loss.constraint_weight = 1.0
         elif (epoch == 60):

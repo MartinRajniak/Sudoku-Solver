@@ -160,4 +160,4 @@ This section details the various experiments conducted to optimize the Sudoku so
 * 
 * **Dataset:** 9M samples
 * **Epochs:** 10
-* **Test Set Accuracy:** 85%
+* **Test Set Accuracy:** 86%

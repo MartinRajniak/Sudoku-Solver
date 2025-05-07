@@ -13,16 +13,18 @@ import shutil
 
 ROOT_CACHE_DIR = "cache"
 
+
 # Input pipeline
 @tf.function
 def add_fixed_number_flag(X, y):
-    is_empty_mask = X == -0.5 # -0.5 is preprocessed 0
+    is_empty_mask = X == -0.5  # -0.5 is preprocessed 0
 
-    modified_values = 10 + y # add 10 so we know that digit was empty in input
+    modified_values = 10 + y  # add 10 so we know that digit was empty in input
 
     y = tf.where(is_empty_mask, modified_values, y)
 
     return X, y
+
 
 def configure_for_performance(
     ds: tf.data.Dataset, shuffle, batch_size, use_disk_cache=False, cache_dir=None
@@ -108,7 +110,9 @@ def prepare_dataset(batch_size: int, size_limit: int = None, use_disk_cache=Fals
     train_datasets = []
     for index, train_loaded_dataset in enumerate(train_loaded_datasets):
         # TODO: if we use Loss layer instead of Loss function, we wouldn't need to mask data
-        train_loaded_dataset = train_loaded_dataset.map(add_fixed_number_flag, num_parallel_calls=tf.data.AUTOTUNE)
+        train_loaded_dataset = train_loaded_dataset.map(
+            add_fixed_number_flag, num_parallel_calls=tf.data.AUTOTUNE
+        )
 
         train_dataset = configure_for_performance(
             train_loaded_dataset,
@@ -146,3 +150,37 @@ def prepare_dataset(batch_size: int, size_limit: int = None, use_disk_cache=Fals
     print_pipeline_performance(train_datasets[0])
 
     return train_datasets, val_dataset, test_dataset
+
+
+def mix_datasets(datasets, main_dataset_index, primary_dataset_split):
+    """Mix datasets by taking `primary_dataset_split` from main dataset and `1 - primary_dataset_split` from already seen datasets."""
+
+    if main_dataset_index == 0:
+        # For first item just return it right away
+        return datasets[0]
+
+    mixed_dataset = []
+    for dataset_index, dataset in enumerate(datasets):
+        if dataset_index == main_dataset_index:
+            split = primary_dataset_split
+        else:
+            split = (1 - primary_dataset_split) / main_dataset_index
+
+        dataset_size = len(dataset)
+        print(dataset_size)
+        split_size = int(dataset_size * split)
+        print(split_size)
+        partial_dataset = dataset.take(split_size)
+
+        if mixed_dataset:
+            mixed_dataset = mixed_dataset.concatenate(partial_dataset)
+        else:
+            mixed_dataset = partial_dataset
+
+        if dataset_index == main_dataset_index:
+            # Don't mix any new datasets yet
+            break
+
+    # TODO: I wonder if shuffling difficulties doesn't hurt training (maybe it is enough to pass mixed dataset as is)
+    # return mixed_dataset.shuffle(int(dataset_size))
+    return mixed_dataset

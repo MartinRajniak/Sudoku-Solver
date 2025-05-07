@@ -1,7 +1,6 @@
 import tensorflow as tf
 import keras
 
-
 @keras.saving.register_keras_serializable()
 class SudokuLoss(keras.losses.Loss):
     def __init__(self, constraint_weight=0.1, fixed_cell_weight=10, name="sudoku_loss", **kwargs):

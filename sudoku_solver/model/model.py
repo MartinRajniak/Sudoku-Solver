@@ -76,10 +76,36 @@ def prepare_model(
         optimizer=optimizers.Adam(learning_rate),
         loss=custom_loss,
         # loss=losses.SparseCategoricalCrossentropy(),
-        metrics=["accuracy", SudokuRulesMetric()],
+        metrics=[SudokuAccuracyMetric(), SudokuRulesMetric()],
     )
 
     return model
+
+# @keras.saving.register_keras_serializable()
+# class SudokuAccuracyMetric(Metric):
+#     def __init__(self, name="sudoku_accuracy", **kwargs):
+#         super().__init__(name=name, **kwargs)
+#         self.accuracy = keras.metrics.Accuracy()
+    
+#     def update_state(self, y_true, y_pred, sample_weight=None):
+#         # TODO: copied from loss function - find common place
+#         # y_true_digits = tf.cast(tf.where(y_true >= 10, y_true - 10, y_true), y_true.dtype)
+
+#         self.accuracy.update_state(y_true, y_pred, sample_weight)
+
+#     def result(self):
+#         return self.accuracy.result()
+
+@keras.saving.register_keras_serializable()
+class SudokuAccuracyMetric(keras.metrics.SparseCategoricalAccuracy):
+    def __init__(self, name="accuracy", **kwargs):
+        super().__init__(name, **kwargs)
+    
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        # TODO: copied from loss function - find common place
+        y_true_digits = tf.cast(tf.where(y_true >= 10, y_true - 10, y_true), y_true.dtype)
+
+        super().update_state(y_true_digits, y_pred, sample_weight)
 
 @keras.saving.register_keras_serializable()
 class SudokuRulesMetric(Metric):
