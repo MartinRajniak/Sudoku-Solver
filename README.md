@@ -150,7 +150,8 @@ This section details the various experiments conducted to optimize the Sudoku so
 * **Result:** Amazingly fast convergence and very high fixed numbers accuracy. However, training is very sensitive to amount of epochs spent on easy difficulties. Train with easy difficulties only until model learns pattern and then switch to more difficult ones (15 epochs with 200k or 3 epochs first 100k samples).
 * **Dataset:** 100k samples
 * **Epochs:** 30
-* **Test Set Accuracy:** 76% (Achieved after only 4 minutes of training)
+* **Test Set Accuracy:** 76% 
+* **Training Time:** 4 minutes
 * 
 * **Dataset:** 9M samples
 * **Epochs:** 10
@@ -162,7 +163,8 @@ This section details the various experiments conducted to optimize the Sudoku so
 * **Result:** Mixed datasets have worse performance and converge much later. Shuffling them helps a bit but they still come short. Probably mix datasets only when fine-tuning after proper training is done.
 * **Dataset:** 200k samples
 * **Epochs:** 30
-* **Test Set Accuracy:** 75% (Achieved after only 8 minutes of training)
+* **Test Set Accuracy:** 75%
+* **Training Time:** 8 minutes
 * 
 * **Dataset:** 9M samples
 * **Epochs:** 10
@@ -172,14 +174,30 @@ This section details the various experiments conducted to optimize the Sudoku so
 
 * **Description:** Train only on most difficult puzzles (difficulty 10). Increase sudoku rules penalty weight and decrease fixed numbers penalty weight.
 * **Result:** Easy puzzles have only ~20% accuracy. It seems Easy (Difficulty 1) and rest are too different.
-* **Dataset:** 500k(50k) samples
+* **Dataset:** 50k samples (eq. 500k with curriculum)
 * **Epochs:** 30
-* **Test Set Accuracy:** 77% (Achieved after 15 minutes of training)
+* **Test Set Accuracy:** 77% 
+* **Training Time:** 15 minutes
 
-**21. Train only on all puzzles at once**
+**21. Train on all puzzles at once**
 
 * **Description:** Do not use curriculum learning.
 * **Result:** Generalization is good but fixed numbers are weak (might be because of lower weight). However, model is still improving so more training will help.
-* **Dataset:** 50k samples
+* **Dataset:** 50k samples (eq. 500k with curriculum)
 * **Epochs:** 30
-* **Test Set Accuracy:** 72% (Achieved after 14 minutes of training)
+* **Test Set Accuracy:** 72% 
+* **Training Time:** 14 minutes
+
+**22. Exclude easiest puzzles**
+
+* **Description:** Do not train with easiest (Difficulty 1) puzzles as those are outliers (~70 vs ~40 fixed numbers).
+* **Result:** High accuracy, especially with harder puzzles. With less data, Difficulty 1 has only 45% accuracy. However, accuracy gets to 99% quickly by doubling the data.
+* **Dataset:** 50k samples (eq. 500k with curriculum)
+* **Epochs:** 30
+* **Test Set Accuracy:** 80% 
+* **Training Time:** 14 minutes
+* 
+* **Dataset:** 100k samples (eq. 1M with curriculum)
+* **Epochs:** 30
+* **Test Set Accuracy:** 81% 
+* **Training Time:** 26 minutes
