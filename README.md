@@ -146,3 +146,18 @@ This section details the various experiments conducted to optimize the Sudoku so
 * **Dataset:** 100k samples
 * **Epochs:** 30
 * **Test Set Accuracy:** 76% (Achieved after only 4 minutes of training)
+* 
+* **Dataset:** 9M samples
+* **Epochs:** 10
+* **Test Set Accuracy:** 90%
+
+**19. Create mixed datasets**
+
+* **Description:** To avoid catastrophic forgetting, each difficulty dataset (10) is mixed with difficulties that model has already seen (80% vs. 20%).
+* **Dataset:** 200k samples
+* **Epochs:** 30
+* **Test Set Accuracy:** 75% (Achieved after only 8 minutes of training)
+* 
+* **Dataset:** 9M samples
+* **Epochs:** 10
+* **Test Set Accuracy:** 85%
