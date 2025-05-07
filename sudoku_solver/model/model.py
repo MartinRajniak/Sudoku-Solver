@@ -1,6 +1,7 @@
 import keras
 from keras import layers, optimizers, models, regularizers, losses, saving, Metric
 
+from sudoku_solver.data.mask import *
 from sudoku_solver.model.loss import SudokuLoss
 
 import tensorflow as tf
@@ -81,30 +82,13 @@ def prepare_model(
 
     return model
 
-# @keras.saving.register_keras_serializable()
-# class SudokuAccuracyMetric(Metric):
-#     def __init__(self, name="sudoku_accuracy", **kwargs):
-#         super().__init__(name=name, **kwargs)
-#         self.accuracy = keras.metrics.Accuracy()
-    
-#     def update_state(self, y_true, y_pred, sample_weight=None):
-#         # TODO: copied from loss function - find common place
-#         # y_true_digits = tf.cast(tf.where(y_true >= 10, y_true - 10, y_true), y_true.dtype)
-
-#         self.accuracy.update_state(y_true, y_pred, sample_weight)
-
-#     def result(self):
-#         return self.accuracy.result()
-
 @keras.saving.register_keras_serializable()
 class SudokuAccuracyMetric(keras.metrics.SparseCategoricalAccuracy):
     def __init__(self, name="accuracy", **kwargs):
         super().__init__(name, **kwargs)
     
     def update_state(self, y_true, y_pred, sample_weight=None):
-        # TODO: copied from loss function - find common place
-        y_true_digits = tf.cast(tf.where(y_true >= 10, y_true - 10, y_true), y_true.dtype)
-
+        y_true_digits = remove_mask_from_target(y_true)
         super().update_state(y_true_digits, y_pred, sample_weight)
 
 @keras.saving.register_keras_serializable()

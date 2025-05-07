@@ -165,6 +165,15 @@ This section details the various experiments conducted to optimize the Sudoku so
 **20. Train only on hardest puzzles**
 
 * **Description:** Train only on most difficult puzzles (difficulty 10). Increase sudoku rules penalty weight and decrease fixed numbers penalty weight.
-* **Dataset:** 500k samples
+* **Result:** Easy puzzles have only ~20% accuracy. It seems Easy (Difficulty 1) and rest are too different.
+* **Dataset:** 500k(50k) samples
 * **Epochs:** 30
 * **Test Set Accuracy:** 77% (Achieved after 15 minutes of training)
+
+**21. Train only on all puzzles at once**
+
+* **Description:** Do not use curriculum learning.
+* **Result:** Generalization is good but fixed numbers are weak (might be because of lower weight). However, model is still improving so more training will help.
+* **Dataset:** 50k samples
+* **Epochs:** 30
+* **Test Set Accuracy:** 72% (Achieved after 14 minutes of training)
