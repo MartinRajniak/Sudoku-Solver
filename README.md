@@ -161,3 +161,10 @@ This section details the various experiments conducted to optimize the Sudoku so
 * **Dataset:** 9M samples
 * **Epochs:** 10
 * **Test Set Accuracy:** 86%
+
+**20. Train only on hardest puzzles**
+
+* **Description:** Train only on most difficult puzzles (difficulty 10). Increase sudoku rules penalty weight and decrease fixed numbers penalty weight.
+* **Dataset:** 500k samples
+* **Epochs:** 30
+* **Test Set Accuracy:** 77% (Achieved after 15 minutes of training)
