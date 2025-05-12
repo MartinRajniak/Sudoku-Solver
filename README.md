@@ -2,7 +2,9 @@
 
 A deep learning approach to solving Sudoku puzzles.
 
-## Findings
+## Most Significant Findings
+
+Results of all experiments are captured in [Experiments](##experiments), but most significant findings are further discussed here.
 
 **1. Custom Loss Function Improves Convergence**
 
@@ -12,6 +14,45 @@ The use of a custom loss function that explicitly guides training according to S
 
 * **Cross-Entropy Loss Only:** 11% test set accuracy
 * **Hybrid Loss:** 76% test set accuracy
+
+## Future work
+
+Summary of future work and experiments that can help improve accuracy.
+
+### Biggest challenges:
+* Hard puzzles - easy ones already have 99% accuracy,
+* Long training - so far training was focused on fast experiments (up to couple of hours).
+ Training might benefit from longer periods but we need to make sure that there is steady progress.
+* Systematic approach - 
+
+### TODO:
+
+**1. Redo experiments in a more systematic way so we can compare them**
+- Establish sample size and number of epochs to use,
+- Cover all important code sections with flags so we can use them as hyperparameters,
+- Prepare experiments so they can be planned and launched outside of Jupyter notebook,
+- Minimize complete failures - notify developer on failure, restart from last checkpoint, etc.
+
+**2. Focus on hard puzzles in curriculum learning**
+- Easy puzzles only until convergence (~70% val acc), then gradually increase difficulty (include past difficulties - ~5-10%),
+- Spend extra few epochs more on hard puzzles (this is where we need the most improvement),
+- Finish with mixed difficulties until we don't see any significant progress,
+
+**3. Augment or create new difficult puzzles**
+- Rotate difficult puzzles to create new ones,
+- Create new difficult puzzles by removing fixed numbers,
+- Create a Sudoku puzzle generator,
+
+**4. Use Learning Rate Scheduler that would adapt to difficulty**
+- Start every difficulty with lower LR (5e-4),
+- After first epoch (or 20% of data), increase to 1e-3 for Easy difficulties (1-3),
+- For medium (4-7), keep 5e-4,
+- Finally for hard (8-10), decrease to 2e-4,
+- Alternatively, use Learning Rate decay (1e-3 -> 1e-4), but restart every difficulty,
+
+**5. Use Sudoku Loss Weight Scheduler that would adapt to difficulty**
+- Sudoku specific rules loss (MSE) - from 0.1 -> 0.6,
+- Fixed cell loss (MSE) - from 10 -> 5,
 
 ## Experiments
 
