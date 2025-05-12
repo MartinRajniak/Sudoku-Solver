@@ -244,6 +244,8 @@ This section details the various experiments conducted to optimize the Sudoku so
 * **Training Time:** 26 minutes
 
 **23. Shuffle concatenated datasets**
+* **Description:** Shuffle concatenated datasets when training with all difficults at once.
+* **Result:** Shuffling difficulties generally seems to improve performance (is it a sign that curriculum training isn't effective?).
 * **Dataset:** 100k samples (eq. 1M with curriculum)
 * **Epochs:** 30
 * **Test Set Accuracy:** 84% 
