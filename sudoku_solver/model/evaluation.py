@@ -1,6 +1,5 @@
 from matplotlib import pyplot as plt
 import os
-import sys
 from termcolor import colored
 
 import numpy as np

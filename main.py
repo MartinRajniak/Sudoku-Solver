@@ -3,6 +3,9 @@ import os
 # 3: Filters out INFO, WARNING, and ERROR messages. Shows only FATAL errors.
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
+# Force colors even when output is piped
+os.environ["FORCE_COLOR"] = "1"
+
 import time
 import datetime
 import sys
@@ -59,6 +62,8 @@ OOS_SOLUTION = (
     "176324589"
     "239586471"
 )
+
+from termcolor import colored
 
 
 def main():
@@ -119,8 +124,10 @@ def run_experiment(experiment):
 
     print(f"\nFinished after {_format_seconds(time.time() - start_time)}")
 
+
 def _format_seconds(seconds):
     return str(datetime.timedelta(seconds=seconds))
+
 
 def _prepare_dataset(app_config):
     return prepare_dataset(
