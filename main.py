@@ -1,4 +1,5 @@
 import os
+
 # 3: Filters out INFO, WARNING, and ERROR messages. Shows only FATAL errors.
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
@@ -8,14 +9,56 @@ import sys
 
 import keras
 
+# Enable mixed precision training to speed up computation
+# WARNING: turn off if you run this on CPU - it will significantly slow down training
+# https://keras.io/api/mixed_precision/
+#
+# Enable when training takes too long - it lowered training time by 14% and increased error rate by 16%
+keras.mixed_precision.set_global_policy("mixed_float16")
+
+# Set the seed using keras.utils.set_random_seed. This will set:
+# 1) `numpy` seed
+# 2) backend random seed
+# 3) `python` random seed
+keras.utils.set_random_seed(42)
+
 from sudoku_solver.config.config import AppConfig
 from sudoku_solver.data.dataset import prepare_dataset
 from sudoku_solver.model.training import train_model
-from sudoku_solver.model.evaluation import plot_histories
+from sudoku_solver.model.evaluation import (
+    plot_histories,
+    evaluate_on_difficulties,
+    evaluate_replacing_fixed_positions,
+    evaluate_puzzle,
+)
 from sudoku_solver.model.model import prepare_model
 
 EXPERIMENTS_DIR = "experiments"
 MODEL_FILE_NAME = "sudoku_solver.keras"
+
+OOS_PUZZLE = (
+    "800250704"
+    "420000000"
+    "000008065"
+    "000045300"
+    "004603100"
+    "007910000"
+    "540700000"
+    "000000089"
+    "209086001"
+)
+
+OOS_SOLUTION = (
+    "863259714"
+    "425167938"
+    "791438265"
+    "612845397"
+    "984673152"
+    "357912846"
+    "548791623"
+    "176324589"
+    "239586471"
+)
 
 
 def main():
@@ -36,38 +79,48 @@ def run_all_experiments():
 def run_experiment(experiment):
     start_time = time.time()
 
-    print(f"Loading config for experiment {experiment}...")
+    print(f"\nLoading config for experiment {experiment}...")
     experiment_dir_path = os.path.join(EXPERIMENTS_DIR, experiment)
     app_config = AppConfig.from_toml(os.path.join(experiment_dir_path, "config.toml"))
     app_config.ROOT_DIR = experiment_dir_path
 
-    print("Preparing datasets...")
+    print("\nPreparing datasets...")
     train_datasets, val_dataset, test_dataset = _prepare_dataset(app_config)
-    print(f"Datasets loaded after {str(datetime.timedelta(seconds=(time.time() - start_time)))}")
+    print(f"Dataset loaded after {_format_seconds(time.time() - start_time)}")
 
-    print("Preparing model...")
+    print("\nPreparing model...")
     model = _prepare_model(app_config)
 
-    print("Training model...")
+    print("\nTraining model...")
     histories = train_model(model, train_datasets, val_dataset, app_config)
-    print(f"Model trained after {str(datetime.timedelta(seconds=(time.time() - start_time)))}")
+    print(f"Model trained after {_format_seconds(time.time() - start_time)}")
 
-    print("Saving model...")
+    print("\nSaving model...")
     model.save(os.path.join(app_config.ROOT_DIR, MODEL_FILE_NAME))
 
-    print("Saving plot figures...")
+    print("\nSaving plot figures...")
     plot_histories(histories, save_to_folder=experiment_dir_path)
 
-    print("Loading model to make sure saved version is valid...")
+    print("\nLoading model to make sure saved version is valid...")
     model = keras.saving.load_model(os.path.join(app_config.ROOT_DIR, MODEL_FILE_NAME))
 
-    print("Evaluating model...")
-    loss, accuracy, *rest = model.evaluate(test_dataset)
+    print("\nEvaluating model on out of sample puzzle...")
+    evaluate_puzzle(model, OOS_PUZZLE, OOS_SOLUTION)
 
+    print("\nEvaluating model on different train dataset difficulties...")
+    evaluate_on_difficulties(model, train_datasets)
+
+    print("\nEvaluating model on test set...")
+    loss, accuracy, *rest = model.evaluate(test_dataset, verbose=0)
     print(f"On test set, model achieved accuracy: {accuracy} and loss: {loss}")
 
-    print(f"Experiment finished after {str(datetime.timedelta(seconds=(time.time() - start_time)))}")
+    print("\nEvaluating model on test set after copying fixed numbers from puzzle...")
+    evaluate_replacing_fixed_positions(model, test_dataset)
 
+    print(f"\nFinished after {_format_seconds(time.time() - start_time)}")
+
+def _format_seconds(seconds):
+    return str(datetime.timedelta(seconds=seconds))
 
 def _prepare_dataset(app_config):
     return prepare_dataset(

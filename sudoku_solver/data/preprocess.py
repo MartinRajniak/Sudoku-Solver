@@ -6,6 +6,7 @@ from sklearn.model_selection import StratifiedShuffleSplit
 TEST_TRAIN_SPLIT = 0.05
 VAL_TEST_SPLIT = 0.5
 
+
 @tf.function
 def preprocess(puzzle_tensor):
     byte_values = tf.io.decode_raw(puzzle_tensor, tf.uint8)
@@ -35,21 +36,26 @@ def preprocess_target(puzzle_tensor):
 def preprocess_map(X, y):
     return (preprocess_input(X), preprocess_target(y))
 
+
 def inverse_preprocess_input(X):
     denormalize = denormalize_input(X)
     reshape = tf.reshape(denormalize, (9, 9))
     return tf.cast(reshape, X.dtype)
+
 
 def inverse_preprocess_target(y):
     scale = denormalize_label(y)
     reshape = tf.reshape(scale, (9, 9))
     return tf.cast(reshape, y.dtype)
 
+
 def denormalize_input(X):
     return (X + 0.5) * 9
 
+
 def denormalize_label(y):
     return y + 1
+
 
 def replace_rare_difficulties(difficulties):
     # Replace difficulties that are rare with the most common one so that we can split evenly
@@ -62,7 +68,9 @@ def replace_rare_difficulties(difficulties):
 
 
 def split_based_on_difficulty(X_tensors, y_tensors, difficulties):
-    train_sss = StratifiedShuffleSplit(n_splits=1, test_size=TEST_TRAIN_SPLIT, random_state=42)
+    train_sss = StratifiedShuffleSplit(
+        n_splits=1, test_size=TEST_TRAIN_SPLIT, random_state=42
+    )
     train_index, test_index = next(train_sss.split(X_tensors, difficulties))
     difficulties_train = difficulties[train_index]
     difficulties_train_dist = np.round(
@@ -78,7 +86,9 @@ def split_based_on_difficulty(X_tensors, y_tensors, difficulties):
     )
     difficulties_temp = difficulties[test_index]
 
-    test_sss = StratifiedShuffleSplit(n_splits=1, test_size=VAL_TEST_SPLIT, random_state=42)
+    test_sss = StratifiedShuffleSplit(
+        n_splits=1, test_size=VAL_TEST_SPLIT, random_state=42
+    )
     val_index, test_index = next(test_sss.split(X_temp, difficulties_temp))
     X_val_tensors, X_test_tensors, y_val_tensors, y_test_tensors = (
         X_temp[val_index],
@@ -199,6 +209,7 @@ def preprocess_dataset(X_tensors, y_tensors):
         test_preprocessed_dataset,
     )
 
+
 # Limit data size
 def limit_dataset(size_limit, train_datasets, val_dataset, test_dataset):
     train_size_limit = int(size_limit * (1 - TEST_TRAIN_SPLIT))
@@ -211,7 +222,11 @@ def limit_dataset(size_limit, train_datasets, val_dataset, test_dataset):
         n_batches = train_size_limit // n_train_ds
         train_datasets[index] = train_datasets[index].take(n_batches)
 
-    return train_datasets, val_dataset.take(val_size_limit), test_dataset.take(test_size_limit)
+    return (
+        train_datasets,
+        val_dataset.take(val_size_limit),
+        test_dataset.take(test_size_limit),
+    )
 
 
 # Difficulty
@@ -229,4 +244,3 @@ def sort_by_difficulty(X_tensors, y_tensors, difficulties):
     X_tensors_sorted = X_tensors[sorted_indices]
     y_tensors_sorted = y_tensors[sorted_indices]
     return X_tensors_sorted, y_tensors_sorted
-
