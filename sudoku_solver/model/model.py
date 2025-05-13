@@ -3,6 +3,7 @@ from keras import layers, optimizers, models, regularizers, losses, saving, Metr
 
 from sudoku_solver.data.mask import *
 from sudoku_solver.model.loss import SudokuLoss
+from sudoku_solver.data.preprocess import denormalize_input
 
 import tensorflow as tf
 
@@ -157,7 +158,7 @@ class FixedNumberLayer(layers.Layer):
         # 1. Preprocess Inputs: Scale, round, clip, and cast to integer
         # Assuming original inputs might be e.g., [-0.5, 0.5] or [0, 1]
         # Adjust scaling/offset if your normalization is different
-        scaled_inputs = (inputs + 0.5) * 9.0
+        scaled_inputs = denormalize_input(inputs)
         rounded_inputs = tf.round(scaled_inputs)
         # Ensure values are within the expected range [0, 9]
         clipped_inputs = tf.clip_by_value(rounded_inputs, 0.0, 9.0)

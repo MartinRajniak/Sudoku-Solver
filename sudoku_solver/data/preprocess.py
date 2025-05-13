@@ -35,12 +35,21 @@ def preprocess_target(puzzle_tensor):
 def preprocess_map(X, y):
     return (preprocess_input(X), preprocess_target(y))
 
-# TODO: see if we don't convert to numpy, if we can reuse this function elsewhere
 def inverse_preprocess_input(X):
-    return ((X + 0.5) * 9).numpy().reshape((9, 9)).astype(int)
+    denormalize = denormalize_input(X)
+    reshape = tf.reshape(denormalize, (9, 9))
+    return tf.cast(reshape, X.dtype)
 
 def inverse_preprocess_target(y):
-    return (y + 1).numpy().reshape((9, 9)).astype(int)
+    scale = denormalize_label(y)
+    reshape = tf.reshape(scale, (9, 9))
+    return tf.cast(reshape, y.dtype)
+
+def denormalize_input(X):
+    return (X + 0.5) * 9
+
+def denormalize_label(y):
+    return y + 1
 
 def replace_rare_difficulties(difficulties):
     # Replace difficulties that are rare with the most common one so that we can split evenly
