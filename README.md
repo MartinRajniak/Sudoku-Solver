@@ -54,6 +54,11 @@ Summary of future work and experiments that can help improve accuracy.
 - Sudoku specific rules loss (MSE) - from 0.1 -> 0.6,
 - Fixed cell loss (MSE) - from 10 -> 5,
 
+**6. Test different architectures**
+- Solving Sudoku puzzles sounds a lot like decoding, maybe Auto-Encoder would be effective,
+- More capacity to learn can be beneficial (more residual layers, neurons, etc.),
+- Try different Regularization to see if it makes difference,
+
 ## Experiments
 
 This section details the various experiments conducted to optimize the Sudoku solver model. Each experiment explores different architectural changes, training strategies, and loss functions to improve performance.

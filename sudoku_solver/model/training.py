@@ -5,20 +5,110 @@ import shutil
 from datetime import datetime
 import numpy as np
 
+from sudoku_solver.data.dataset import mix_datasets, TOTAL_DATASET_SIZE
+
 LOGS_DIR = "logs"
 MODEL_CHECKPOINT_NAME = "sudoku_model_checkpoint.keras"
 
-def prepare_callbacks():
-    # Clear any logs from previous runs
-    shutil.rmtree(LOGS_DIR, ignore_errors=True)
+CURRICULUM_BASE_LEARNING_RATE = 5e-4
 
-    # Clear any model checkpoint (those are only useful in case training stops abruptly)
-    if os.path.exists(MODEL_CHECKPOINT_NAME):
-        os.remove(MODEL_CHECKPOINT_NAME)
+def train_model(model, train_datasets, val_dataset, app_config):
+    if app_config.USE_CURRICULUM_LEARNING:
+        histories = perform_curriculum_training(
+            model, train_datasets, val_dataset, app_config
+        )
+    else:
+        histories = perform_normal_training(
+            model, train_datasets, val_dataset, app_config
+        )
+    return histories
+
+
+def perform_normal_training(model, train_datasets, val_dataset, app_config):
+    training_callbacks = prepare_callbacks(app_config)
+
+    train_dataset = None
+    # TODO: remove 1 - only for testing
+    for dataset in train_datasets[1:]:
+        if train_dataset == None:
+            train_dataset = dataset
+        else:
+            train_dataset = train_dataset.concatenate(dataset)
+
+        train_dataset = train_dataset.shuffle(
+            app_config.DATA_SIZE_LIMIT
+            if app_config.DATA_SIZE_LIMIT
+            else TOTAL_DATASET_SIZE
+        )
+
+    history = model.fit(
+        train_dataset,
+        validation_data=val_dataset,
+        epochs=app_config.EPOCHS,
+        callbacks=training_callbacks,
+    )
+    return [history]
+
+
+def perform_curriculum_training(model, train_datasets, val_dataset, app_config):
+    num_of_difficulties = len(train_datasets)
+    # TODO: compare static and progressive loss weights
+    constraint_weights = np.linspace(0.1, 0.6, num_of_difficulties)
+    fixed_cell_weights = np.linspace(10, 5, num_of_difficulties)
+
+    histories = []
+    initial_epoch = 0
+    for main_dataset_index in range(num_of_difficulties):
+        print(f"Train on difficulty {main_dataset_index}")
+        
+        # Prepare callbacks
+        training_callbacks = prepare_callbacks(app_config)
+
+        # Prepare dataset
+        if app_config.USE_DATASET_MIXING:
+            train_dataset = mix_datasets(
+                train_datasets, main_dataset_index, app_config.PRIMARY_DATASET_SPLIT
+            )
+        else:
+            train_dataset = train_datasets[main_dataset_index]
+
+        # Prepare Learning Rate
+        # Start every difficulty with lower learning rate
+        print("Resetting learning rate to:", CURRICULUM_BASE_LEARNING_RATE)
+        model.optimizer.learning_rate = CURRICULUM_BASE_LEARNING_RATE
+
+        # TODO: prepare LR callback for easy, medium and hard difficulties
+
+        # Prepare Loss Weights
+        print("Previous constraint loss weight:", model.loss.constraint_weight.numpy())
+        print("Previous fixed cell loss weight:", model.loss.fixed_cell_weight.numpy())
+
+        model.loss.constraint_weight = constraint_weights[main_dataset_index]
+        model.loss.fixed_cell_weight = fixed_cell_weights[main_dataset_index]
+
+        print("New constraint loss weight:", model.loss.constraint_weight.numpy())
+        print("New fixed cell loss weight:", model.loss.fixed_cell_weight.numpy())
+
+        history = model.fit(
+            train_dataset,
+            validation_data=val_dataset,
+            epochs=initial_epoch + app_config.EPOCHS,
+            callbacks=training_callbacks,
+            initial_epoch=initial_epoch,
+        )
+        histories.append(history)
+
+        initial_epoch += app_config.EPOCHS
+    return histories
+
+
+def prepare_callbacks(app_config):
+    # Clear any logs from previous runs
+    shutil.rmtree(os.path.join(app_config.ROOT_DIR, LOGS_DIR), ignore_errors=True)
 
     return [
         callbacks.ModelCheckpoint(
-            MODEL_CHECKPOINT_NAME, save_best_only=True, monitor="val_loss"
+            os.path.join(app_config.ROOT_DIR, MODEL_CHECKPOINT_NAME), save_best_only=True, monitor="val_loss"
         ),
         callbacks.ReduceLROnPlateau(
             monitor="val_loss", factor=0.5, patience=3, min_lr=1e-6
@@ -28,7 +118,7 @@ def prepare_callbacks():
         ),
         callbacks.TensorBoard(
             log_dir=os.path.join(
-                LOGS_DIR, "fit", datetime.now().strftime("%Y%m%d-%H%M%S")
+                os.path.join(app_config.ROOT_DIR, LOGS_DIR), "fit", datetime.now().strftime("%Y%m%d-%H%M%S")
             ),
             histogram_freq=1,
             # Uncomment for profile data
@@ -39,22 +129,25 @@ def prepare_callbacks():
             # profile_batch='20000,20005'
         ),
         PrintPenalties(),
-        SudokuRulesWeightScheduler(),
+        # SudokuRulesWeightScheduler(),
     ]
+
 
 class SudokuRulesWeightScheduler(keras.callbacks.Callback):
 
-    def __init__(self):
+    def __init__(self, epochs_per_run):
         super().__init__()
+        self.epochs_per_run = epochs_per_run
 
     def on_epoch_end(self, epoch, logs=None):
-        # TODO: take into account total epochs
         print("constraint_weight ", self.model.loss.constraint_weight)
         print("fixed_cell_weight ", self.model.loss.fixed_cell_weight)
-        if (epoch == 30):
+
+        if epoch == 30:
             self.model.loss.constraint_weight = 1.0
-        elif (epoch == 60):
+        elif epoch == 60:
             self.model.loss.constraint_weight = 10.0
+
 
 class PrintPenalties(keras.callbacks.Callback):
 
@@ -63,12 +156,16 @@ class PrintPenalties(keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         print("\nPenalties:")
-        print("crossentropy_tracker: ", self.model.loss.crossentropy_tracker.result())
-        print("total_penalty_tracker: ", self.model.loss.constraint_penalty_tracker.result())
-        print("row_penalty_tracker: ", self.model.loss.row_penalty_tracker.result())
-        print("col_penalty_tracker: ", self.model.loss.col_penalty_tracker.result())
-        print("box_penalty_tracker: ", self.model.loss.box_penalty_tracker.result())
-        print("cell_penalty_tracker: ", self.model.loss.cell_penalty_tracker.result())
+        print("crossentropy_tracker: ", self.model.loss.crossentropy_tracker.result().numpy())
+        print(
+            "total_penalty_tracker: ",
+            self.model.loss.constraint_penalty_tracker.result().numpy(),
+        )
+        print("row_penalty_tracker: ", self.model.loss.row_penalty_tracker.result().numpy())
+        print("col_penalty_tracker: ", self.model.loss.col_penalty_tracker.result().numpy())
+        print("box_penalty_tracker: ", self.model.loss.box_penalty_tracker.result().numpy())
+        print("cell_penalty_tracker: ", self.model.loss.cell_penalty_tracker.result().numpy())
+
 
 # def pretrain_model():
 #     if (USE_PRE_TRAINING):
@@ -117,20 +214,24 @@ class PrintPenalties(keras.callbacks.Callback):
 #         if isinstance(layer, layers.Conv2D) or isinstance(layer, layers.BatchNormalization):
 #             model.layers[i].set_weights(pretrain_model.layers[i].get_weights())
 
-#     del pretrain_model       
-#     del X_train_tensors, y_train_tensors, X_val_tensors, y_val_tensors, X_test_tensors, y_test_tensors 
+#     del pretrain_model
+#     del X_train_tensors, y_train_tensors, X_val_tensors, y_val_tensors, X_test_tensors, y_test_tensors
+
 
 # Include some percentage of earlier samples in each new batch
 def create_mixed_dataset(x_data, y_data, prev_indices, new_indices, mix_ratio=0.2):
     # Sample some previous examples
     num_prev = int(len(new_indices) * mix_ratio)
     if num_prev > 0 and len(prev_indices) > 0:
-        sampled_prev = np.random.choice(prev_indices, size=min(num_prev, len(prev_indices)), replace=False)
+        sampled_prev = np.random.choice(
+            prev_indices, size=min(num_prev, len(prev_indices)), replace=False
+        )
         combined_indices = np.concatenate([sampled_prev, new_indices])
     else:
         combined_indices = new_indices
-        
+
     return x_data[combined_indices], y_data[combined_indices]
+
 
 # def train_progressively():
 #     # Percentage of data set to use

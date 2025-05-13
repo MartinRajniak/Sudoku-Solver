@@ -1,7 +1,8 @@
+import os
 from matplotlib import pyplot as plt
 
 
-def plot_histories(histories):
+def plot_histories(histories, save_to_folder = None):
     merged_histories = merge_histories(histories)
 
     total_epochs = len(merged_histories["loss"])
@@ -25,6 +26,9 @@ def plot_histories(histories):
     if n_columns > 3:
         plot_constraint_loss(merged_histories, n_columns)
         plot_run_lines(total_epochs, epochs_in_run)
+    
+    if (save_to_folder):
+        plt.savefig(os.path.join(save_to_folder, "learning_curves.png"))
 
 
 def merge_histories(histories):

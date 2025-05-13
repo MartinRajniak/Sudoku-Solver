@@ -2,7 +2,7 @@ import os
 import tensorflow as tf
 
 # Directory to save the TFRecord files
-ROOT_DIR = "./sudoku_tfrecords"
+ROOT_DIR = "./data/sudoku_tfrecords"
 TFRECORD_DIR_TRAIN = "train_{:02d}"
 TFRECORD_DIR_VAL = "val"
 TFRECORD_DIR_TEST = "test"
