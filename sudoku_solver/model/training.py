@@ -30,8 +30,7 @@ def perform_normal_training(model, train_datasets, val_dataset, app_config):
     training_callbacks = prepare_callbacks(app_config)
 
     train_dataset = None
-    # TODO: remove 1 - only for testing
-    for dataset in train_datasets[1:]:
+    for dataset in train_datasets:
         if train_dataset == None:
             train_dataset = dataset
         else:

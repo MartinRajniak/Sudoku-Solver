@@ -15,6 +15,16 @@ The use of a custom loss function that explicitly guides training according to S
 * **Cross-Entropy Loss Only:** 11% test set accuracy
 * **Hybrid Loss:** 76% test set accuracy
 
+**2. Curriculum Learning Improves Convergence (slightly)**
+
+The use of curriculum learning (start with easy puzzles and progress to most difficult ones) helps to converge slightly faster.
+Maybe more importantly, mixed datasets converge faster on most difficult puzzles (85% vs 75% test set accuracy), but slower on easy puzzles (90% vs. 99%).
+
+**Comparison (300k samples, 30 Epochs, ~10 min training time):**
+
+* **Normal training:** 78% test set accuracy
+* **Hybrid Loss:** 80% test set accuracy
+
 ## Future work
 
 Summary of future work and experiments that can help improve accuracy.
@@ -23,7 +33,7 @@ Summary of future work and experiments that can help improve accuracy.
 * Hard puzzles - easy ones already have 99% accuracy,
 * Long training - so far training was focused on fast experiments (up to couple of hours).
  Training might benefit from longer periods but we need to make sure that there is steady progress.
-* Systematic approach - 
+* Systematic approach
 
 ### TODO:
 
@@ -267,4 +277,12 @@ This section details the various experiments conducted to optimize the Sudoku so
 * **Dataset:** 300k samples
 * **Epochs:** 30
 * **Test Set Accuracy:** 79%
-* **Training Time:** 10 minutes 
+* **Training Time:** 10 minutes
+
+**25. Curriculum Learning**
+* **Description:** Repeating curriculum learning (start with easy puzzles and gradually progress to difficult ones) experiment.
+* **Result:** Curriculum Learning in a short run (10mins) beats mixed difficulties, but mixed difficulties have better accuracy on hardest puzzles. Best loss weight configuration for curriculum and mixed also differs, suggesting that more experiments are needed to figure out best loss weights for both setups.
+* **Dataset:** 300k samples
+* **Epochs:** 30
+* **Test Set Accuracy:** 80%
+* **Training Time:** 10 minutes

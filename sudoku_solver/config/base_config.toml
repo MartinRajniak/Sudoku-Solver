@@ -18,7 +18,7 @@ USE_PRE_TRAINING = false
 USE_DISK_CACHE = false
 
 # Idea is to let model learn first on easy problems and then gradually increase problem difficulty
-USE_CURRICULUM_LEARNING = true
+USE_CURRICULUM_LEARNING = false
 
 # Idea is to create a layer that would penalise predictions that break Sudoku rules
 CONSTRAINT_WEIGHT = 0.1
@@ -27,7 +27,7 @@ CONSTRAINT_WEIGHT = 0.1
 # otherwise we could just use cross-entropy to check fixed number predictions
 FIXED_CELL_WEIGHT = 10
 
-USE_WEIGHT_SCHEDULING = True
+USE_WEIGHT_SCHEDULING = false
 
 # Replace predictions for fixed numbers with actuall fixed numbers
 #
