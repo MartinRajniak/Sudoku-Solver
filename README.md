@@ -260,3 +260,11 @@ This section details the various experiments conducted to optimize the Sudoku so
 * **Epochs:** 30
 * **Test Set Accuracy:** 87%
 * **Training Time:** 56 minutes
+
+**24. Use Linear Loss Weight Scheduling**
+* **Description:** In curriculum learning, use high fixed number penalty and low sudoku rules penaly. But as we progress with difficulties, increase sudoku rules penalty and lower fixed number penalty.
+* **Result:** With Linear Loss Weight Scheduling we see slight performance improvement on small dataset with few epochs.
+* **Dataset:** 300k samples
+* **Epochs:** 30
+* **Test Set Accuracy:** 79%
+* **Training Time:** 10 minutes 

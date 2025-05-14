@@ -6,8 +6,11 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 # Force colors even when output is piped
 os.environ["FORCE_COLOR"] = "1"
 
-import time
+from argparse import ArgumentParser
+from dataclasses import asdict
 import datetime
+import time
+import tomllib
 import sys
 
 import keras
@@ -25,6 +28,8 @@ keras.mixed_precision.set_global_policy("mixed_float16")
 # 3) `python` random seed
 keras.utils.set_random_seed(42)
 
+import mlflow
+
 from sudoku_solver.config.config import AppConfig
 from sudoku_solver.data.dataset import prepare_dataset
 from sudoku_solver.model.training import train_model
@@ -37,6 +42,8 @@ from sudoku_solver.model.evaluation import (
 from sudoku_solver.model.model import prepare_model
 
 EXPERIMENTS_DIR = "experiments"
+EXPERIMENT_TRIALS_DIR = "trials"
+EXPERIMENT_DESCRIPTOR = "description.toml"
 MODEL_FILE_NAME = "sudoku_solver.keras"
 
 OOS_PUZZLE = (
@@ -63,31 +70,59 @@ OOS_SOLUTION = (
     "239586471"
 )
 
-from termcolor import colored
-
 
 def main():
-    experiment_to_run = sys.argv[1]
-    if experiment_to_run:
-        print(f"Running experiment {experiment_to_run}...")
-        run_experiment(experiment_to_run)
+    # Define arguments
+    parser = ArgumentParser(
+        description="Run specified experiment."
+        " If trial is specified, only that trial is used."
+        " Otherwise all trials in experiment are run."
+    )
+    parser.add_argument("--experiment", required=True, help="Experiment's directory")
+    parser.add_argument("--trial", required=False, help="Trial's directory")
+
+    # Parse arguments
+    args = parser.parse_args()
+    experiment_dir = args.experiment
+    experiment_trial = args.trial
+
+    # Initialize experiment
+    experiment_path = os.path.join(EXPERIMENTS_DIR, experiment_dir)
+    experiment_desc_path = os.path.join(experiment_path, EXPERIMENT_DESCRIPTOR)
+
+    with open(experiment_desc_path, "rb") as f:
+        config_data = tomllib.load(f)
+
+    experiment_name = config_data.get("NAME", "Unknown")
+
+    print(f"Starting experiment {experiment_name}...")
+    mlflow.set_tracking_uri(uri="http://127.0.0.1:8080")
+    mlflow.set_experiment(experiment_name=experiment_name)
+
+    experiment_trials_path = os.path.join(experiment_path, EXPERIMENT_TRIALS_DIR)
+    if experiment_trial:
+        print(f"Running trial {experiment_trial}...")
+        run_trial(experiment_trials_path, experiment_trial)
     else:
-        print("Running all experiments...")
-        run_all_experiments()
+        print("Running all trials...")
+        run_all_trials(experiment_trials_path)
 
 
-def run_all_experiments():
-    for experiment in os.listdir(EXPERIMENTS_DIR):
-        run_experiment(experiment)
+def run_all_trials(experiment_trials_path):
+    for trial in os.listdir(experiment_trials_path):
+        run_trial(experiment_trials_path, trial)
 
 
-def run_experiment(experiment):
+def run_trial(experiment_trials_path, trial):
     start_time = time.time()
 
-    print(f"\nLoading config for experiment {experiment}...")
-    experiment_dir_path = os.path.join(EXPERIMENTS_DIR, experiment)
-    app_config = AppConfig.from_toml(os.path.join(experiment_dir_path, "config.toml"))
-    app_config.ROOT_DIR = experiment_dir_path
+    print(f"\nLoading config for trial {trial}...")
+    experiment_trial_path = os.path.join(experiment_trials_path, trial)
+    app_config = AppConfig.from_toml(os.path.join(experiment_trial_path, "config.toml"))
+    app_config.ROOT_DIR = experiment_trial_path
+
+    mlflow.start_run()
+    mlflow.log_params(asdict(app_config))
 
     print("\nPreparing datasets...")
     train_datasets, val_dataset, test_dataset = _prepare_dataset(app_config)
@@ -104,7 +139,7 @@ def run_experiment(experiment):
     model.save(os.path.join(app_config.ROOT_DIR, MODEL_FILE_NAME))
 
     print("\nSaving plot figures...")
-    plot_histories(histories, save_to_folder=experiment_dir_path)
+    plot_histories(histories, save_to_folder=experiment_trial_path)
 
     print("\nLoading model to make sure saved version is valid...")
     model = keras.saving.load_model(os.path.join(app_config.ROOT_DIR, MODEL_FILE_NAME))
@@ -113,14 +148,19 @@ def run_experiment(experiment):
     evaluate_puzzle(model, OOS_PUZZLE, OOS_SOLUTION)
 
     print("\nEvaluating model on different train dataset difficulties...")
-    evaluate_on_difficulties(model, train_datasets)
+    difficulty_to_accuracy = evaluate_on_difficulties(model, train_datasets)
+    mlflow.log_metrics(difficulty_to_accuracy)
 
     print("\nEvaluating model on test set...")
-    loss, accuracy, *rest = model.evaluate(test_dataset, verbose=0)
-    print(f"On test set, model achieved accuracy: {accuracy} and loss: {loss}")
+    test_loss, test_accuracy, *rest = model.evaluate(test_dataset, verbose=0)
+    mlflow.log_metrics({"test_loss": test_loss, "test_accuracy": test_accuracy})
+    print(f"On test set, model achieved accuracy: {test_accuracy} and loss: {test_loss}")
 
     print("\nEvaluating model on test set after copying fixed numbers from puzzle...")
-    evaluate_replacing_fixed_positions(model, test_dataset)
+    fixed_accuracy = evaluate_replacing_fixed_positions(model, test_dataset)
+    mlflow.log_metric("fixed_accuracy", fixed_accuracy)
+
+    mlflow.end_run()
 
     print(f"\nFinished after {_format_seconds(time.time() - start_time)}")
 

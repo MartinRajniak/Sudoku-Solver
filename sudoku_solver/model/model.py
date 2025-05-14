@@ -14,7 +14,7 @@ def prepare_model(
     learning_rate=1e-3,
     constraint_weight=0.1,
     fixed_cell_weight=10,
-):
+) -> models.Model:
     inputs = layers.Input((9, 9, 1))
 
     # Initial feature extraction

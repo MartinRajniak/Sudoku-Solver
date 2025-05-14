@@ -34,6 +34,8 @@ class AppConfig:
     # otherwise we could just use cross-entropy to check fixed number predictions
     FIXED_CELL_WEIGHT: float
 
+    USE_WEIGHT_SCHEDULING: bool
+
     # Replace predictions for fixed numbers with actuall fixed numbers
     #
     # Idea is to force model to ignore fixed numbers

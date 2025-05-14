@@ -8,6 +8,8 @@ import tensorflow as tf
 
 import keras
 
+import mlflow
+
 from sudoku_solver.data.preprocess import (
     preprocess_input,
     preprocess_target,
@@ -26,7 +28,7 @@ def plot_histories(histories, save_to_folder=None):
     height = 6
     width = 24 if n_columns == 4 else 18
 
-    plt.figure(figsize=(width, height))
+    figure = plt.figure(figsize=(width, height))
 
     plot_accuracy(merged_histories, n_columns)
     plot_run_lines(total_epochs, epochs_in_run)
@@ -40,6 +42,8 @@ def plot_histories(histories, save_to_folder=None):
     if n_columns > 3:
         plot_constraint_loss(merged_histories, n_columns)
         plot_run_lines(total_epochs, epochs_in_run)
+
+    mlflow.log_figure(figure, "learning_curves.png")
 
     if save_to_folder:
         plt.savefig(os.path.join(save_to_folder, "learning_curves.png"))
@@ -111,6 +115,7 @@ def plot_constraint_loss(histories, n_columns):
 
 
 def evaluate_on_difficulties(model, train_datasets):
+    difficulty_to_accuracy = {}
     for index, train_dataset in enumerate(train_datasets):
         batch_count = 10
         total_loss = 0.0
@@ -134,9 +139,11 @@ def evaluate_on_difficulties(model, train_datasets):
         avg_loss = total_loss / batch_count
         avg_accuracy = total_accuracy / batch_count
         print(f"Difficulty {index + 1}: loss={avg_loss}, accuracy={avg_accuracy}")
+        difficulty_to_accuracy.update({f"Difficulty {index + 1}": avg_accuracy})
 
         avg_non_zero = int(total_non_zero_count / batch_count)
         print(f"Average non-zero numbers in puzzle in one batch: {avg_non_zero}\n")
+    return difficulty_to_accuracy
 
 
 def evaluate_replacing_fixed_positions(model, test_dataset):
@@ -163,9 +170,9 @@ def evaluate_replacing_fixed_positions(model, test_dataset):
 
     accuracy_metric = keras.metrics.Accuracy()
     accuracy_metric.update_state(y_true_fixed, y_pred_fixed)
-    print(
-        f"Test Set Accuracy after copying Fixed Numbers: {accuracy_metric.result().numpy():.8f}"
-    )
+    fixed_accuracy = accuracy_metric.result().numpy()
+    print(f"Test Set Accuracy after copying Fixed Numbers: {fixed_accuracy:.8f}")
+    return fixed_accuracy
 
 
 def evaluate_puzzle(model, puzzle, solution):

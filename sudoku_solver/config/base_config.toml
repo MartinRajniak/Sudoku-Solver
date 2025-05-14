@@ -27,6 +27,8 @@ CONSTRAINT_WEIGHT = 0.1
 # otherwise we could just use cross-entropy to check fixed number predictions
 FIXED_CELL_WEIGHT = 10
 
+USE_WEIGHT_SCHEDULING = True
+
 # Replace predictions for fixed numbers with actuall fixed numbers
 #
 # Idea is to force model to ignore fixed numbers

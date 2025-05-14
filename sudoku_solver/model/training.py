@@ -5,6 +5,8 @@ import shutil
 from datetime import datetime
 import numpy as np
 
+import mlflow
+
 from sudoku_solver.data.dataset import mix_datasets, TOTAL_DATASET_SIZE
 
 LOGS_DIR = "logs"
@@ -80,14 +82,15 @@ def perform_curriculum_training(model, train_datasets, val_dataset, app_config):
         # TODO: prepare LR callback for easy, medium and hard difficulties
 
         # Prepare Loss Weights
-        print("Previous constraint loss weight:", model.loss.constraint_weight.numpy())
-        print("Previous fixed cell loss weight:", model.loss.fixed_cell_weight.numpy())
+        if (app_config.USE_WEIGHT_SCHEDULING):
+            print("Previous constraint loss weight:", model.loss.constraint_weight.numpy())
+            print("Previous fixed cell loss weight:", model.loss.fixed_cell_weight.numpy())
 
-        model.loss.constraint_weight = constraint_weights[main_dataset_index]
-        model.loss.fixed_cell_weight = fixed_cell_weights[main_dataset_index]
+            model.loss.constraint_weight = constraint_weights[main_dataset_index]
+            model.loss.fixed_cell_weight = fixed_cell_weights[main_dataset_index]
 
-        print("New constraint loss weight:", model.loss.constraint_weight.numpy())
-        print("New fixed cell loss weight:", model.loss.fixed_cell_weight.numpy())
+            print("New constraint loss weight:", model.loss.constraint_weight.numpy())
+            print("New fixed cell loss weight:", model.loss.fixed_cell_weight.numpy())
 
         history = model.fit(
             train_dataset,
@@ -99,12 +102,16 @@ def perform_curriculum_training(model, train_datasets, val_dataset, app_config):
         histories.append(history)
 
         initial_epoch += app_config.EPOCHS
+    
     return histories
 
 
 def prepare_callbacks(app_config):
     # Clear any logs from previous runs
     shutil.rmtree(os.path.join(app_config.ROOT_DIR, LOGS_DIR), ignore_errors=True)
+
+    # TODO: see if it is OK that we create new callback every difficulty
+    mlflow_callback = mlflow.keras.MlflowCallback(mlflow.active_run())
 
     return [
         callbacks.ModelCheckpoint(
@@ -130,6 +137,7 @@ def prepare_callbacks(app_config):
         ),
         PrintPenalties(),
         # SudokuRulesWeightScheduler(),
+        mlflow_callback
     ]
 
 
