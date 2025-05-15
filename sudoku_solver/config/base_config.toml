@@ -1,5 +1,5 @@
 # We need to limit data to be able to run faster experiments
-DATA_SIZE_LIMIT = 10_000
+DATA_SIZE_LIMIT = 300_000
 
 BATCH_SIZE = 256 # Best accurracy & time for current learning rate
 LEARNING_RATE = 1e-3
@@ -21,11 +21,13 @@ USE_DISK_CACHE = false
 USE_CURRICULUM_LEARNING = false
 
 # Idea is to create a layer that would penalise predictions that break Sudoku rules
-CONSTRAINT_WEIGHT = 0.1
+CONSTRAINT_WEIGHT_START = 0.1
+CONSTRAINT_WEIGHT_END = 0.6
 
 # Fixed cell penalty only makes sense if we increase weight against cross-entropy,
 # otherwise we could just use cross-entropy to check fixed number predictions
-FIXED_CELL_WEIGHT = 10
+FIXED_CELL_WEIGHT_START = 10
+FIXED_CELL_WEIGHT_END = 5
 
 USE_WEIGHT_SCHEDULING = false
 

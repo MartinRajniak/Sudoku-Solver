@@ -175,3 +175,19 @@ def mix_datasets(datasets, main_dataset_index, primary_dataset_split):
     # TODO: I wonder if shuffling difficulties doesn't hurt training (maybe it is enough to pass mixed dataset as is)
     # return mixed_dataset.shuffle(int(dataset_size))
     return mixed_dataset
+
+
+def merge_datasets(datasets, app_config):
+    dataset = None
+    for dataset in datasets:
+        if dataset == None:
+            dataset = dataset
+        else:
+            dataset = dataset.concatenate(dataset)
+
+        dataset = dataset.shuffle(
+            app_config.DATA_SIZE_LIMIT
+            if app_config.DATA_SIZE_LIMIT
+            else TOTAL_DATASET_SIZE
+        )
+    return dataset

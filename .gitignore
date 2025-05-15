@@ -188,3 +188,6 @@ sudoku_tfrecords/
 # MLFlow
 mlartifacts
 mlruns
+
+# Hyperparameter tuning
+hp_tuner

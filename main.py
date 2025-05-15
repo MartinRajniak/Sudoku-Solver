@@ -129,7 +129,7 @@ def run_trial(experiment_trials_path, trial):
     print(f"Dataset loaded after {_format_seconds(time.time() - start_time)}")
 
     print("\nPreparing model...")
-    model = _prepare_model(app_config)
+    model = prepare_model(app_config)
 
     print("\nTraining model...")
     histories = train_model(model, train_datasets, val_dataset, app_config)
@@ -174,16 +174,6 @@ def _prepare_dataset(app_config):
         app_config.BATCH_SIZE,
         size_limit=app_config.DATA_SIZE_LIMIT,
         use_disk_cache=app_config.USE_DISK_CACHE,
-    )
-
-
-def _prepare_model(app_config):
-    return prepare_model(
-        use_residual=app_config.USE_RESIDUAL,
-        use_fixed_number_layer=app_config.USE_FIXED_NUMBER_LAYER,
-        learning_rate=app_config.LEARNING_RATE,
-        constraint_weight=app_config.CONSTRAINT_WEIGHT,
-        fixed_cell_weight=app_config.FIXED_CELL_WEIGHT,
     )
 
 

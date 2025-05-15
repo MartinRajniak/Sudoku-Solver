@@ -286,3 +286,11 @@ This section details the various experiments conducted to optimize the Sudoku so
 * **Epochs:** 30
 * **Test Set Accuracy:** 80%
 * **Training Time:** 10 minutes
+
+**26. Mixed datasets with hyperparameter tuning**
+* **Description:** Train model on mixed difficulties with hyperparameters from Keras Tuner's Random Search.
+* **Result:** Among chosen hyperparameters we can see slower learning (4e-4), similar Fixed Cell penalty (~10) and much higher Sudoku Rules penalty (~1.3)
+* **Dataset:** 300k samples (eq. 3M with curriculum)
+* **Epochs:** 3
+* **Test Set Accuracy:** 42%
+* **Training Time:** 2 minutes

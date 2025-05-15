@@ -28,11 +28,13 @@ class AppConfig:
     USE_CURRICULUM_LEARNING: bool
 
     # Idea is to create a layer that would penalise predictions that break Sudoku rules
-    CONSTRAINT_WEIGHT: float
+    CONSTRAINT_WEIGHT_START: float
+    CONSTRAINT_WEIGHT_END: float
 
     # Fixed cell penalty only makes sense if we increase weight against cross-entropy,
     # otherwise we could just use cross-entropy to check fixed number predictions
-    FIXED_CELL_WEIGHT: float
+    FIXED_CELL_WEIGHT_START: float
+    FIXED_CELL_WEIGHT_END: float
 
     USE_WEIGHT_SCHEDULING: bool
 

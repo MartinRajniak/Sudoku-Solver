@@ -1,18 +1,43 @@
 import os
 import keras
 from keras import callbacks
+import keras_tuner
 import shutil
 from datetime import datetime
 import numpy as np
 
 import mlflow
 
-from sudoku_solver.data.dataset import mix_datasets, TOTAL_DATASET_SIZE
+from sudoku_solver.data.dataset import mix_datasets, merge_datasets
+from sudoku_solver.model.model import prepare_model
 
 LOGS_DIR = "logs"
 MODEL_CHECKPOINT_NAME = "sudoku_model_checkpoint.keras"
 
 CURRICULUM_BASE_LEARNING_RATE = 5e-4
+
+
+def search_hyperparameters(train_datasets, val_dataset, app_config):
+
+    def wrapped_hypermodel(hp):
+        return prepare_model(app_config, hp)
+
+    tuner = keras_tuner.RandomSearch(
+        wrapped_hypermodel,
+        objective="val_accuracy",
+        max_trials=10,
+        directory="hp_tuner",
+        project_name="random_search",
+    )
+
+    tuner.search_space_summary()
+
+    training_callbacks = prepare_callbacks(app_config)
+    train_dataset = merge_datasets(train_datasets, app_config)
+    tuner.search(train_dataset, epochs=3, validation_data=val_dataset, callbacks=training_callbacks)
+
+    return tuner
+
 
 def train_model(model, train_datasets, val_dataset, app_config):
     if app_config.USE_CURRICULUM_LEARNING:
@@ -29,18 +54,7 @@ def train_model(model, train_datasets, val_dataset, app_config):
 def perform_normal_training(model, train_datasets, val_dataset, app_config):
     training_callbacks = prepare_callbacks(app_config)
 
-    train_dataset = None
-    for dataset in train_datasets:
-        if train_dataset == None:
-            train_dataset = dataset
-        else:
-            train_dataset = train_dataset.concatenate(dataset)
-
-        train_dataset = train_dataset.shuffle(
-            app_config.DATA_SIZE_LIMIT
-            if app_config.DATA_SIZE_LIMIT
-            else TOTAL_DATASET_SIZE
-        )
+    train_dataset = merge_datasets(train_datasets, app_config)
 
     history = model.fit(
         train_dataset,
@@ -53,15 +67,22 @@ def perform_normal_training(model, train_datasets, val_dataset, app_config):
 
 def perform_curriculum_training(model, train_datasets, val_dataset, app_config):
     num_of_difficulties = len(train_datasets)
-    # TODO: compare static and progressive loss weights
-    constraint_weights = np.linspace(0.1, 0.6, num_of_difficulties)
-    fixed_cell_weights = np.linspace(10, 5, num_of_difficulties)
+    constraint_weights = np.linspace(
+        app_config.CONSTRAINT_WEIGHT_START,
+        app_config.CONSTRAINT_WEIGHT_END,
+        num_of_difficulties,
+    )
+    fixed_cell_weights = np.linspace(
+        app_config.FIXED_CELL_WEIGHT_START,
+        app_config.FIXED_CELL_WEIGHT_END,
+        num_of_difficulties,
+    )
 
     histories = []
     initial_epoch = 0
     for main_dataset_index in range(num_of_difficulties):
         print(f"Train on difficulty {main_dataset_index}")
-        
+
         # Prepare callbacks
         training_callbacks = prepare_callbacks(app_config)
 
@@ -81,9 +102,13 @@ def perform_curriculum_training(model, train_datasets, val_dataset, app_config):
         # TODO: prepare LR callback for easy, medium and hard difficulties
 
         # Prepare Loss Weights
-        if (app_config.USE_WEIGHT_SCHEDULING):
-            print("Previous constraint loss weight:", model.loss.constraint_weight.numpy())
-            print("Previous fixed cell loss weight:", model.loss.fixed_cell_weight.numpy())
+        if app_config.USE_WEIGHT_SCHEDULING:
+            print(
+                "Previous constraint loss weight:", model.loss.constraint_weight.numpy()
+            )
+            print(
+                "Previous fixed cell loss weight:", model.loss.fixed_cell_weight.numpy()
+            )
 
             model.loss.constraint_weight = constraint_weights[main_dataset_index]
             model.loss.fixed_cell_weight = fixed_cell_weights[main_dataset_index]
@@ -101,7 +126,7 @@ def perform_curriculum_training(model, train_datasets, val_dataset, app_config):
         histories.append(history)
 
         initial_epoch += app_config.EPOCHS
-    
+
     return histories
 
 
@@ -109,12 +134,11 @@ def prepare_callbacks(app_config):
     # Clear any logs from previous runs
     shutil.rmtree(os.path.join(app_config.ROOT_DIR, LOGS_DIR), ignore_errors=True)
 
-    # TODO: see if it is OK that we create new callback every difficulty
-    mlflow_callback = mlflow.keras.MlflowCallback(mlflow.active_run())
-
     return [
         callbacks.ModelCheckpoint(
-            os.path.join(app_config.ROOT_DIR, MODEL_CHECKPOINT_NAME), save_best_only=True, monitor="val_loss"
+            os.path.join(app_config.ROOT_DIR, MODEL_CHECKPOINT_NAME),
+            save_best_only=True,
+            monitor="val_loss",
         ),
         callbacks.ReduceLROnPlateau(
             monitor="val_loss", factor=0.5, patience=3, min_lr=1e-6
@@ -124,7 +148,9 @@ def prepare_callbacks(app_config):
         ),
         callbacks.TensorBoard(
             log_dir=os.path.join(
-                os.path.join(app_config.ROOT_DIR, LOGS_DIR), "fit", datetime.now().strftime("%Y%m%d-%H%M%S")
+                os.path.join(app_config.ROOT_DIR, LOGS_DIR),
+                "fit",
+                datetime.now().strftime("%Y%m%d-%H%M%S"),
             ),
             histogram_freq=1,
             # Uncomment for profile data
@@ -136,7 +162,7 @@ def prepare_callbacks(app_config):
         ),
         PrintPenalties(),
         # SudokuRulesWeightScheduler(),
-        mlflow_callback
+        mlflow.keras.MlflowCallback(mlflow.active_run()),
     ]
 
 
@@ -163,15 +189,30 @@ class PrintPenalties(keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         print("\nPenalties:")
-        print("crossentropy_tracker: ", self.model.loss.crossentropy_tracker.result().numpy())
+        print(
+            "crossentropy_tracker: ",
+            self.model.loss.crossentropy_tracker.result().numpy(),
+        )
         print(
             "total_penalty_tracker: ",
             self.model.loss.constraint_penalty_tracker.result().numpy(),
         )
-        print("row_penalty_tracker: ", self.model.loss.row_penalty_tracker.result().numpy())
-        print("col_penalty_tracker: ", self.model.loss.col_penalty_tracker.result().numpy())
-        print("box_penalty_tracker: ", self.model.loss.box_penalty_tracker.result().numpy())
-        print("cell_penalty_tracker: ", self.model.loss.cell_penalty_tracker.result().numpy())
+        print(
+            "row_penalty_tracker: ",
+            self.model.loss.row_penalty_tracker.result().numpy(),
+        )
+        print(
+            "col_penalty_tracker: ",
+            self.model.loss.col_penalty_tracker.result().numpy(),
+        )
+        print(
+            "box_penalty_tracker: ",
+            self.model.loss.box_penalty_tracker.result().numpy(),
+        )
+        print(
+            "cell_penalty_tracker: ",
+            self.model.loss.cell_penalty_tracker.result().numpy(),
+        )
 
 
 # def pretrain_model():
