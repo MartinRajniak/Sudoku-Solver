@@ -73,7 +73,7 @@ def prepare_model(
 
     if hp:
         constraint_weight = hp.Float(
-            "constraint_weight", min_value=0.1, max_value=2.0, sampling="log"
+            "constraint_weight", min_value=0.1, max_value=4.0, sampling="log"
         )
         fixed_cell_weight = hp.Float(
             "fixed_cell", min_value=1.0, max_value=20.0, sampling="log"

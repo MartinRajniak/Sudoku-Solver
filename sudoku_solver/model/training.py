@@ -14,20 +14,17 @@ from sudoku_solver.model.model import prepare_model
 LOGS_DIR = "logs"
 MODEL_CHECKPOINT_NAME = "sudoku_model_checkpoint.keras"
 
-CURRICULUM_BASE_LEARNING_RATE = 5e-4
-
-
 def search_hyperparameters(train_datasets, val_dataset, app_config):
 
     def wrapped_hypermodel(hp):
         return prepare_model(app_config, hp)
 
-    tuner = keras_tuner.RandomSearch(
+    tuner = keras_tuner.Hyperband(
         wrapped_hypermodel,
         objective="val_accuracy",
-        max_trials=10,
         directory="hp_tuner",
-        project_name="random_search",
+        project_name="hyperband",
+        seed=42
     )
 
     tuner.search_space_summary()
@@ -96,8 +93,8 @@ def perform_curriculum_training(model, train_datasets, val_dataset, app_config):
 
         # Prepare Learning Rate
         # Start every difficulty with lower learning rate
-        print("Resetting learning rate to:", CURRICULUM_BASE_LEARNING_RATE)
-        model.optimizer.learning_rate = CURRICULUM_BASE_LEARNING_RATE
+        # print("Resetting learning rate to:", CURRICULUM_BASE_LEARNING_RATE)
+        # model.optimizer.learning_rate = CURRICULUM_BASE_LEARNING_RATE
 
         # TODO: prepare LR callback for easy, medium and hard difficulties
 
@@ -138,29 +135,29 @@ def prepare_callbacks(app_config):
         callbacks.ModelCheckpoint(
             os.path.join(app_config.ROOT_DIR, MODEL_CHECKPOINT_NAME),
             save_best_only=True,
-            monitor="val_loss",
+            monitor="val_accuracy",
         ),
         callbacks.ReduceLROnPlateau(
-            monitor="val_loss", factor=0.5, patience=3, min_lr=1e-6
+            monitor="val_accuracy", factor=0.5, patience=10, min_lr=1e-6, min_delta=1e-4
         ),
         callbacks.EarlyStopping(
-            monitor="val_loss", patience=5, restore_best_weights=True
+            monitor="val_accuracy", patience=10, restore_best_weights=True
         ),
-        callbacks.TensorBoard(
-            log_dir=os.path.join(
-                os.path.join(app_config.ROOT_DIR, LOGS_DIR),
-                "fit",
-                datetime.now().strftime("%Y%m%d-%H%M%S"),
-            ),
-            histogram_freq=1,
-            # Uncomment for profile data
-            #
-            # write_graph=True,
-            # write_steps_per_second=True,
-            # update_freq="batch",
-            # profile_batch='20000,20005'
-        ),
-        PrintPenalties(),
+        # callbacks.TensorBoard(
+        #     log_dir=os.path.join(
+        #         os.path.join(app_config.ROOT_DIR, LOGS_DIR),
+        #         "fit",
+        #         datetime.now().strftime("%Y%m%d-%H%M%S"),
+        #     ),
+        #     histogram_freq=1,
+        #     # Uncomment for profile data
+        #     #
+        #     # write_graph=True,
+        #     # write_steps_per_second=True,
+        #     # update_freq="batch",
+        #     # profile_batch='20000,20005'
+        # ),
+        # PrintPenalties(),
         # SudokuRulesWeightScheduler(),
         mlflow.keras.MlflowCallback(mlflow.active_run()),
     ]

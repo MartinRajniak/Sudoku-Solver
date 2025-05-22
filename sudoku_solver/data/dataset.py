@@ -32,7 +32,7 @@ def configure_for_performance(
         else:
             ds = ds.cache()
     if shuffle:
-        ds = ds.shuffle(buffer_size=1_000)
+        ds = ds.shuffle(buffer_size=10_000)
     ds = ds.batch(
         batch_size, drop_remainder=True  # drop_remainder=True = better for TPU/GPU
     )
@@ -178,16 +178,16 @@ def mix_datasets(datasets, main_dataset_index, primary_dataset_split):
 
 
 def merge_datasets(datasets, app_config):
-    dataset = None
+    merged_dataset = None
     for dataset in datasets:
-        if dataset == None:
-            dataset = dataset
+        if merged_dataset == None:
+            merged_dataset = dataset
         else:
-            dataset = dataset.concatenate(dataset)
+            merged_dataset = merged_dataset.concatenate(dataset)
 
-        dataset = dataset.shuffle(
-            app_config.DATA_SIZE_LIMIT
-            if app_config.DATA_SIZE_LIMIT
-            else TOTAL_DATASET_SIZE
-        )
-    return dataset
+    # We are only shuffling batches at this moment - but that is still enough for what we need since there are a lot of batches
+    merged_dataset = merged_dataset.shuffle(1_000)
+
+    # The prefetch is already applied to individual datasets, but a final prefetch
+    # on the concatenated stream can still be beneficial for the overall pipeline.
+    return merged_dataset.prefetch(tf.data.AUTOTUNE)

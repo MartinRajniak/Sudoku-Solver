@@ -9,7 +9,9 @@ class AppConfig:
     DATA_SIZE_LIMIT: int
 
     BATCH_SIZE: int
+
     LEARNING_RATE: float
+    
     EPOCHS: int
 
     # Use residual connections in convolutional model architecture

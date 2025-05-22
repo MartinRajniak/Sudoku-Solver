@@ -1,7 +1,7 @@
 import os
 
 # 3: Filters out INFO, WARNING, and ERROR messages. Shows only FATAL errors.
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+# os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 # Force colors even when output is piped
 os.environ["FORCE_COLOR"] = "1"
@@ -32,7 +32,7 @@ import mlflow
 
 from sudoku_solver.config.config import AppConfig
 from sudoku_solver.data.dataset import prepare_dataset
-from sudoku_solver.model.training import train_model
+from sudoku_solver.model.training import train_model, search_hyperparameters
 from sudoku_solver.model.evaluation import (
     plot_histories,
     evaluate_on_difficulties,
@@ -128,8 +128,16 @@ def run_trial(experiment_trials_path, trial):
     train_datasets, val_dataset, test_dataset = _prepare_dataset(app_config)
     print(f"Dataset loaded after {_format_seconds(time.time() - start_time)}")
 
+    # print("\nFinding best hyperparameters...")
+    # tuner = search_hyperparameters(train_datasets, val_dataset, app_config)
+    # best_hp = tuner.get_best_hyperparameters()[0]
+    # print(best_hp.values)
+
     print("\nPreparing model...")
+    # model = prepare_model(app_config, best_hp)
     model = prepare_model(app_config)
+    # TODO: use checkpoint if available (update curriculum training as well - start from last epoch)
+    # model = keras.saving.load_model(os.path.join(app_config.ROOT_DIR, "sudoku_model_checkpoint.keras"))
 
     print("\nTraining model...")
     histories = train_model(model, train_datasets, val_dataset, app_config)
@@ -154,7 +162,7 @@ def run_trial(experiment_trials_path, trial):
     print("\nEvaluating model on test set...")
     test_loss, test_accuracy, *rest = model.evaluate(test_dataset, verbose=0)
     mlflow.log_metrics({"test_loss": test_loss, "test_accuracy": test_accuracy})
-    print(f"On test set, model achieved accuracy: {test_accuracy} and loss: {test_loss}")
+    print(f"Test set accuracy: {test_accuracy} and loss: {test_loss}")
 
     print("\nEvaluating model on test set after copying fixed numbers from puzzle...")
     fixed_accuracy = evaluate_replacing_fixed_positions(model, test_dataset)
